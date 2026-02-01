@@ -1,0 +1,26 @@
+{
+  "$schema": "./schemas/package.schema.json",
+  "name": "access-health-platform",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "apps/api"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace web",
+    "dev:api": "npm run start:dev --workspace api",
+    "lint": "npm run lint --workspaces",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "lightningcss": "^1.31.1",
+    "lightningcss-win32-x64-msvc": "^1.31.1",
+    "prettier": "3.2.4"
+  },
+  "overrides": {
+    "@tailwindcss/node": {
+      "lightningcss": "^1.31.1",
+      "lightningcss-win32-x64-msvc": "^1.31.1"
+    }
+  }
+}
