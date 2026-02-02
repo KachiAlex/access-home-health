@@ -2,11 +2,6 @@
   "version": 2,
   "buildCommand": "npm run build",
   "installCommand": "npm install",
-  "env": {
-    "NODE_ENV": "production",
-    "DATABASE_URL": "@database_url",
-    "NEXT_PUBLIC_API_URL": "@next_public_api_url"
-  },
   "rewrites": [
     {
       "source": "/api/:path*",
