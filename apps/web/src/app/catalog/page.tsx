@@ -136,14 +136,6 @@ export default function CatalogPage() {
               </Link>
             ))
           )}
-                    <span key={variant.id} className="rounded-full border border-slate-200 px-3 py-1">
-                      {variant.name}
-                    </span>
-                  ))}
-                </div>
-              </article>
-            ))
-          )}
         </div>
       </section>
     </div>
