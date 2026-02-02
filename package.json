@@ -17,13 +17,11 @@
   },
   "devDependencies": {
     "lightningcss": "^1.31.1",
-    "lightningcss-win32-x64-msvc": "^1.31.1",
     "prettier": "3.2.4"
   },
   "overrides": {
     "@tailwindcss/node": {
-      "lightningcss": "^1.31.1",
-      "lightningcss-win32-x64-msvc": "^1.31.1"
+      "lightningcss": "^1.31.1"
     }
   }
 }
