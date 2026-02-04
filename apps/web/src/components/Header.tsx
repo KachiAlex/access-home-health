@@ -1,84 +1,155 @@
 "use client";
 
 import Link from "next/link";
-import { Phone, ShoppingCart, LogOut } from "lucide-react";
+import Image from "next/image";
+import { ShoppingCart, User, Search, Menu, X } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
+import { useState } from "react";
 
 const navLinks = [
   { href: "/", label: "Home" },
-  { href: "/catalog", label: "Catalog" },
-  { href: "/forms", label: "Clinical Forms" },
-  { href: "/marketing", label: "Marketing Kit" },
-  { href: "/account", label: "My Account" },
+  { href: "/catalog", label: "Shop" },
+  { href: "/categories", label: "Categories" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export function Header() {
   const { itemCount } = useCart();
   const { user, logout, isAuthenticated } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   return (
-    <header className="border-b border-border bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/75">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-primary">Access Home Health</p>
-          <p className="text-sm text-muted-foreground">
-            Modern durable medical equipment for providers, caregivers, and patients.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-end">
-          <nav className="flex flex-wrap items-center gap-3 text-sm font-medium text-foreground/80">
+    <header className="bg-white shadow-sm sticky top-0 z-50">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo - Left */}
+          <Link href="/" className="flex-shrink-0">
+            <Image
+              src="/access-home-logo.png"
+              alt="Access Home Health"
+              width={140}
+              height={40}
+              className="h-10 w-auto object-contain"
+              priority
+            />
+          </Link>
+
+          {/* Desktop Navigation - Center */}
+          <nav className="hidden lg:flex items-center space-x-8">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-full px-3 py-1 transition hover:bg-muted"
+                className="text-gray-700 hover:text-blue-600 text-sm font-medium transition-colors whitespace-nowrap"
               >
                 {link.label}
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-3 text-sm">
-            <a
-              href="tel:1-800-555-2040"
-              className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-primary transition hover:bg-primary hover:text-primary-foreground"
+
+          {/* Right Actions */}
+          <div className="flex items-center space-x-4">
+            {/* Search - Desktop */}
+            <button
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className="hidden lg:block text-gray-600 hover:text-blue-600 transition-colors"
             >
-              <Phone size={16} />
-              1-800-555-2040
-            </a>
+              <Search size={20} />
+            </button>
+
+            {/* Account */}
+            {isAuthenticated ? (
+              <div className="flex items-center space-x-2">
+                <span className="hidden sm:block text-sm text-gray-700 whitespace-nowrap">
+                  {user?.firstName}
+                </span>
+                <button
+                  onClick={logout}
+                  className="text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <User size={20} />
+                </button>
+              </div>
+            ) : (
+              <Link href="/login" className="text-gray-600 hover:text-blue-600 transition-colors">
+                <User size={20} />
+              </Link>
+            )}
+
+            {/* Cart */}
             <Link
               href="/cart"
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-primary-foreground shadow-sm transition hover:bg-primary/90 relative"
+              className="relative text-gray-600 hover:text-blue-600 transition-colors"
             >
-              <ShoppingCart size={16} />
-              <span>Cart</span>
+              <ShoppingCart size={20} />
               {itemCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {itemCount}
                 </span>
               )}
             </Link>
-            {isAuthenticated ? (
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-slate-600">Hi, {user?.firstName}</span>
-                <button
-                  onClick={logout}
-                  className="inline-flex items-center gap-2 rounded-full border border-red-200 px-4 py-2 text-red-600 transition hover:bg-red-50"
-                >
-                  <LogOut size={16} />
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-slate-900 transition hover:bg-slate-50"
-              >
-                Sign in
-              </Link>
-            )}
+
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden text-gray-600 hover:text-blue-600 transition-colors"
+            >
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
           </div>
         </div>
+
+        {/* Search Bar - Expandable */}
+        {isSearchOpen && (
+          <div className="py-4 border-t border-gray-200">
+            <div className="max-w-2xl mx-auto">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search for medical supplies..."
+                  className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  autoFocus
+                />
+                <button className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <Search size={20} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden border-t border-gray-200 py-4">
+            <nav className="flex flex-col space-y-3">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-gray-700 hover:text-blue-600 text-base font-medium transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <div className="pt-3 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    setIsSearchOpen(!isSearchOpen);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 text-base font-medium transition-colors w-full"
+                >
+                  <Search size={20} />
+                  <span>Search</span>
+                </button>
+              </div>
+            </nav>
+          </div>
+        )}
       </div>
     </header>
   );
