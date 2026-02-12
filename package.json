@@ -1,0 +1,16 @@
+{
+  "name": "accesshealth",
+  "version": "1.0.0",
+  "description": "A modern medical ecommerce platform for Access Home Health & Medical Supplies",
+  "private": true,
+  "scripts": {
+    "install-all": "npm install && cd client && npm install && cd ../server && npm install",
+    "dev-client": "cd client && npm run dev",
+    "dev-server": "cd server && npm run dev",
+    "build-client": "cd client && npm run build",
+    "build": "npm run build-client"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.6.1"
+  }
+}

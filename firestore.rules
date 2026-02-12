@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email in [
+        'admin@accesshomehealth.com',
+        'admin@accesshomehealthsupplies.com'
+      ];
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Products - anyone can read, only admin can write
+    match /products/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // App Settings - anyone can read, only admin can write
+    match /app_settings/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /customers/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow read, write: if isAdmin();
+      match /items/{itemId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    match /users/{userId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

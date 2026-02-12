@@ -1,0 +1,8 @@
+﻿[
+  {
+    "origin": ["https://accesshomehealth.web.app"],
+    "method": ["GET","POST","PUT","DELETE","OPTIONS"],
+    "responseHeader": ["Content-Type","Authorization","x-goog-resumable"],
+    "maxAgeSeconds": 3600
+  }
+]

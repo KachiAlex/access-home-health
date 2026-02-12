@@ -1,0 +1,37 @@
+name: CI - Unified Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: accesshomehealth
+
+      - name: Install Firebase CLI
+        run: |
+          npm install -g firebase-tools
+
+      - name: Authenticate Firebase (token)
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          echo "$FIREBASE_TOKEN" | firebase login:ci --token "$FIREBASE_TOKEN" >/dev/null 2>&1 || true
+
+      - name: Make deploy script executable
+        run: chmod +x ./deploy-all.sh || true
+
+      - name: Run unified deploy
+        env:
+          RUNTIME: nodejs18
+        run: ./deploy-all.sh
+
+# Requirements: set repository secrets GCP_SA_KEY (JSON service account), FIREBASE_TOKEN (CI token)
