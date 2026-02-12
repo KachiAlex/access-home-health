@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "buildCommand": "cd apps/web && next build",
+  "installCommand": "npm ci",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/apps/api/api/:path*"
+    }
+  ],
+  "functions": {
+    "apps/api/api/**/*.ts": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  }
+}

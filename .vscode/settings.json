@@ -1,0 +1,9 @@
+{
+  "json.schemaDownload.enable": false,
+  "json.schemas": [
+    {
+      "fileMatch": ["/package.json", "/apps/web/package.json", "/apps/api/package.json"],
+      "url": "./schemas/package.schema.json"
+    }
+  ]
+}
