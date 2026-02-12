@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
   "firestore": {
     "database": "(default)",
     "location": "nam5",
@@ -8,10 +7,6 @@
   },
   "hosting": {
     "public": "client/dist",
-=======
-  "hosting": {
-    "public": "public",
->>>>>>> c38e1f5d05869389c08301b84d433a50816f6cb6
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -23,12 +18,8 @@
         "destination": "/index.html"
       }
     ]
-  }
-<<<<<<< HEAD
-  ,
+  },
   "functions": {
     "source": "functions"
   }
-=======
->>>>>>> c38e1f5d05869389c08301b84d433a50816f6cb6
 }
