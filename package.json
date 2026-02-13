@@ -11,6 +11,7 @@
     "build": "npm run build-client"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^8.3.0",
     "firebase-admin": "^13.6.1"
   }
 }

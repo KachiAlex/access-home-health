@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { Navigate } from 'react-router-dom'
 import {
@@ -47,7 +47,10 @@ const AdminDashboard = () => {
     category: 'medical',
     image: '',
     imageFile: null,
+    // Local preview URL for immediate preview when admin selects a file
+    previewUrl: '',
   })
+  const prevPreviewRef = useRef(null)
   const [seeding, setSeeding] = useState(false)
   const [seedSuccess, setSeedSuccess] = useState(false)
 
@@ -65,6 +68,21 @@ const AdminDashboard = () => {
       setSendGridKey(settings.sendGridKey)
     }
   }, [settings])
+
+  // Revoke previous object URL when previewUrl changes to avoid memory leaks
+  useEffect(() => {
+    const prev = prevPreviewRef.current
+    if (prev && prev.startsWith && prev.startsWith('blob:') && prev !== newProduct.previewUrl) {
+      try { URL.revokeObjectURL(prev) } catch (err) {}
+    }
+    prevPreviewRef.current = newProduct.previewUrl
+    return () => {
+      const cur = prevPreviewRef.current
+      if (cur && cur.startsWith && cur.startsWith('blob:')) {
+        try { URL.revokeObjectURL(cur) } catch (err) {}
+      }
+    }
+  }, [newProduct.previewUrl])
 
   // Fetch recent orders from Firestore
   useEffect(() => {
@@ -103,6 +121,8 @@ const AdminDashboard = () => {
       if (editingId) {
         await updateProduct(editingId, productData)
         alert('Product updated successfully!')
+        // force UI to reflect updated product immediately
+        // updateProduct uses Firestore listener to push changes to products list
         setEditingId(null)
       } else {
         await addProduct(productData)
@@ -117,6 +137,7 @@ const AdminDashboard = () => {
         category: 'medical',
         image: '',
         imageFile: null,
+        previewUrl: '',
       })
     } catch (error) {
       alert(`Error saving product: ${error.message}`)
@@ -132,6 +153,7 @@ const AdminDashboard = () => {
       description: product.description || '',
       category: product.category || 'medical',
       image: product.image || '',
+      previewUrl: product.image || '',
     })
   }
 
@@ -144,6 +166,8 @@ const AdminDashboard = () => {
       description: '',
       category: 'medical',
       image: '',
+      imageFile: null,
+      previewUrl: '',
     })
   }
 
@@ -367,11 +391,35 @@ const AdminDashboard = () => {
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, imageFile: e.target.files?.[0] || null })
-                      }
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null
+                        if (!file) {
+                          setNewProduct({ ...newProduct, imageFile: null, previewUrl: '' })
+                          return
+                        }
+                        const reader = new FileReader()
+                        reader.onload = () => {
+                          setNewProduct((prev) => ({ ...prev, imageFile: file, previewUrl: reader.result }))
+                        }
+                        reader.readAsDataURL(file)
+                      }}
                       className="input"
                     />
+                    {/* Live Image Preview */}
+                    <div className="col-span-1 md:col-span-2 lg:col-span-3 mt-2">
+                      <p className="text-sm text-gray-600 mb-1">Image preview</p>
+                      <div className="w-32 h-32 bg-gray-100 rounded overflow-hidden border">
+                        {newProduct.previewUrl || newProduct.image ? (
+                          <img
+                            src={newProduct.previewUrl || newProduct.image}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400">No image</div>
+                        )}
+                      </div>
+                    </div>
                     <textarea
                       placeholder="Description"
                       value={newProduct.description}

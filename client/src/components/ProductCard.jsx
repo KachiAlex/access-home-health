@@ -67,7 +67,7 @@ const ProductCard = ({ product }) => {
       {/* Product Image */}
       <div className="bg-gradient-to-br from-gray-100 to-gray-200 h-56 overflow-hidden flex items-center justify-center relative">
         <img
-          src={product.image || placeholderDataUri}
+          src={imageSrc}
           alt={product.name}
           loading="lazy"
           onError={(e) => {
