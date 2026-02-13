@@ -112,7 +112,7 @@ const AdminDashboard = () => {
         stock: parseInt(newProduct.stock),
         description: newProduct.description || '',
         category: newProduct.category || 'medical',
-        image: newProduct.image || 'https://images.unsplash.com/photo-1576091160550-112173f7f869?w=400&h=400&fit=crop',
+        image: newProduct.image || '',
       }
 
       // If admin selected a file, attach it for upload handling in productService

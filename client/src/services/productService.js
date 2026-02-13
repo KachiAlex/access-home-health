@@ -40,6 +40,10 @@ export const addProduct = async (productData) => {
         delete productData.imageFile
       }
     }
+    // Remove empty image fields so Firestore only stores a value when present
+    if (productData.image === '') delete productData.image
+    if (productData.imagePath === '') delete productData.imagePath
+
     const docRef = await addDoc(productsCollection, {
       ...productData,
       createdAt: new Date(),
@@ -67,6 +71,10 @@ export const updateProduct = async (productId, productData) => {
         delete productData.imageFile
       }
     }
+    // Remove empty image fields before updating
+    if (productData.image === '') delete productData.image
+    if (productData.imagePath === '') delete productData.imagePath
+
     const productRef = doc(db, 'products', productId)
     await updateDoc(productRef, {
       ...productData,
