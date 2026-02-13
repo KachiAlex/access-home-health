@@ -13,8 +13,13 @@ gcloud config set project accesshomehealth
 cd "$(dirname "$0")"/..
 cd functions
 
-echo "Installing dependencies (npm ci)"
-npm ci
+echo "Installing dependencies (prefer npm ci; fall back to npm install)"
+if npm ci; then
+  echo "npm ci succeeded"
+else
+  echo "npm ci failed — falling back to npm install"
+  npm install
+fi
 
 # Ensure firebase CLI is available; Cloud Shell typically has it.
 if ! command -v firebase >/dev/null 2>&1; then
