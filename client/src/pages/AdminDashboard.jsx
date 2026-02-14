@@ -14,7 +14,9 @@ import {
   
 } from 'react-icons/fa'
 import ProductEditModal from '../components/ProductEditModal'
+import OrderDetailsModal from '../components/OrderDetailsModal'
 import { useSettings } from '../hooks/useSettings'
+import PasswordChangeForm from '../components/PasswordChangeForm'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { useProducts } from '../hooks/useProducts'
@@ -147,6 +149,8 @@ const AdminDashboard = () => {
   // Modal editing state
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [modalProduct, setModalProduct] = useState(null)
+  const [orderModalOpen, setOrderModalOpen] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState(null)
 
   const handleOpenAddModal = () => {
     setModalProduct({
@@ -439,7 +443,7 @@ const AdminDashboard = () => {
                             </td>
                             <td className="px-6 py-3">{order.date}</td>
                             <td className="px-6 py-3">
-                              <button className="text-blue-600 hover:text-blue-800 font-semibold">
+                              <button onClick={() => { setSelectedOrder(order); setOrderModalOpen(true) }} className="text-blue-600 hover:text-blue-800 font-semibold">
                                 View Details
                               </button>
                             </td>
@@ -449,6 +453,7 @@ const AdminDashboard = () => {
                     </table>
                   </div>
                 )}
+                <OrderDetailsModal order={selectedOrder} open={orderModalOpen} onClose={() => { setOrderModalOpen(false); setSelectedOrder(null) }} />
               </div>
             )}
 
@@ -508,6 +513,13 @@ const AdminDashboard = () => {
                     )}
                   </div>
                 </form>
+
+                {/* Admin password change */}
+                <div className="mt-8 p-6 bg-gray-50 rounded-lg max-w-2xl">
+                  <h3 className="text-lg font-semibold mb-4">Change Admin Password</h3>
+                  <p className="text-sm text-gray-600 mb-4">Admins can change their account password here.</p>
+                  <PasswordChangeForm />
+                </div>
               </div>
             )}
           </div>
