@@ -27,6 +27,8 @@ const Checkout = () => {
     cardNumber: '',
     expiry: '',
     cvv: '',
+    paymentMethod: 'card',
+    transferReference: '',
   })
 
   if (cartItems.length === 0) {
@@ -71,11 +73,14 @@ const Checkout = () => {
     if (!formData.city.trim()) errors.city = 'City is required'
     if (!formData.state.trim()) errors.state = 'State is required'
     if (!formData.zipCode.trim()) errors.zipCode = 'ZIP code is required'
-    if (!formData.cardNumber.trim()) errors.cardNumber = 'Card number is required'
-    if (!/^\d{16}$/.test(formData.cardNumber.replace(/\s/g, ''))) errors.cardNumber = 'Invalid card number'
-    if (!formData.expiry.trim()) errors.expiry = 'Expiry date is required'
-    if (!/^\d{2}\/\d{2}$/.test(formData.expiry)) errors.expiry = 'Use MM/YY format'
-    if (!formData.cvv.trim() || !/^\d{3,4}$/.test(formData.cvv)) errors.cvv = 'Invalid CVV'
+    // Only validate card fields when card payment selected
+    if (formData.paymentMethod === 'card') {
+      if (!formData.cardNumber.trim()) errors.cardNumber = 'Card number is required'
+      if (!/^\d{16}$/.test(formData.cardNumber.replace(/\s/g, ''))) errors.cardNumber = 'Invalid card number'
+      if (!formData.expiry.trim()) errors.expiry = 'Expiry date is required'
+      if (!/^\d{2}\/\d{2}$/.test(formData.expiry)) errors.expiry = 'Use MM/YY format'
+      if (!formData.cvv.trim() || !/^\d{3,4}$/.test(formData.cvv)) errors.cvv = 'Invalid CVV'
+    }
     
     setFormErrors(errors)
     return Object.keys(errors).length === 0
@@ -121,7 +126,9 @@ const Checkout = () => {
           state: formData.state,
           zip: formData.zipCode,
         },
-        status: 'Pending',
+        paymentMethod: formData.paymentMethod || 'card',
+        transferReference: formData.transferReference || null,
+        status: formData.paymentMethod === 'transfer' ? 'Pending Transfer' : 'Pending',
         createdAt: serverTimestamp(),
       }
 
@@ -301,44 +308,80 @@ const Checkout = () => {
                   <span>Your payment information is encrypted and secure</span>
                 </div>
 
+                {/* Payment method selector */}
+                <div className="mb-4">
+                  <label className="inline-flex items-center mr-6">
+                    <input type="radio" name="paymentMethod" value="card" checked={formData.paymentMethod === 'card'} onChange={handleChange} className="mr-2" />
+                    <span>Card</span>
+                  </label>
+                  <label className="inline-flex items-center">
+                    <input type="radio" name="paymentMethod" value="transfer" checked={formData.paymentMethod === 'transfer'} onChange={handleChange} className="mr-2" />
+                    <span>Bank Transfer (test)</span>
+                  </label>
+                </div>
+
+                {/* Transfer instructions when selected */}
+                {formData.paymentMethod === 'transfer' && (
+                  <div className="mb-4 p-4 bg-gray-50 rounded text-sm text-gray-700">
+                    <p className="font-semibold">Send test transfer to:</p>
+                    <p>Bank: Example Bank</p>
+                    <p>Account: 123456789</p>
+                    <p>Name: Access Health Test</p>
+                    <p className="mt-2">After sending, optionally enter the transaction reference below.</p>
+                    <input type="text" name="transferReference" placeholder="Transaction reference (optional)" value={formData.transferReference} onChange={handleChange} className="input w-full mt-2" />
+                  </div>
+                )}
+
                 <div>
-                  <input
-                    type="text"
-                    name="cardNumber"
-                    placeholder="Card Number (16 digits) *"
-                    value={formData.cardNumber}
-                    onChange={(e) => handleChange({...e, target: {...e.target, value: e.target.value.replace(/\D/g, '').substring(0, 16)}})}
-                    className={`input w-full mb-4 ${formErrors.cardNumber ? 'border-red-500' : ''}`}
-                  />
-                  {formErrors.cardNumber && <p className="text-red-600 text-xs mt-1 mb-4">{formErrors.cardNumber}</p>}
+                  {formData.paymentMethod === 'card' && (
+                    <>
+                      <input
+                        type="text"
+                        name="cardNumber"
+                        placeholder="Card Number (16 digits) *"
+                        value={formData.cardNumber}
+                        onChange={(e) => handleChange({...e, target: {...e.target, value: e.target.value.replace(/\D/g, '').substring(0, 16)}})}
+                        className={`input w-full mb-4 ${formErrors.cardNumber ? 'border-red-500' : ''}`}
+                      />
+                      {formErrors.cardNumber && <p className="text-red-600 text-xs mt-1 mb-4">{formErrors.cardNumber}</p>}
+                    </>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <input
-                      type="text"
-                      name="expiry"
-                      placeholder="MM/YY *"
-                      value={formData.expiry}
-                      onChange={(e) => {
-                        let val = e.target.value.replace(/\D/g, '').substring(0, 4)
-                        if (val.length >= 2) val = val.substring(0, 2) + '/' + val.substring(2)
-                        handleChange({...e, target: {...e.target, value: val}})
-                      }}
-                      className={`input ${formErrors.expiry ? 'border-red-500' : ''}`}
-                    />
-                    {formErrors.expiry && <p className="text-red-600 text-xs mt-1">{formErrors.expiry}</p>}
+                    {formData.paymentMethod === 'card' && (
+                      <>
+                        <input
+                          type="text"
+                          name="expiry"
+                          placeholder="MM/YY *"
+                          value={formData.expiry}
+                          onChange={(e) => {
+                            let val = e.target.value.replace(/\D/g, '').substring(0, 4)
+                            if (val.length >= 2) val = val.substring(0, 2) + '/' + val.substring(2)
+                            handleChange({...e, target: {...e.target, value: val}})
+                          }}
+                          className={`input ${formErrors.expiry ? 'border-red-500' : ''}`}
+                        />
+                        {formErrors.expiry && <p className="text-red-600 text-xs mt-1">{formErrors.expiry}</p>}
+                      </>
+                    )}
                   </div>
                   <div>
-                    <input
-                      type="text"
-                      name="cvv"
-                      placeholder="CVV *"
-                      value={formData.cvv}
-                      onChange={(e) => handleChange({...e, target: {...e.target, value: e.target.value.replace(/\D/g, '').substring(0, 4)}})}
-                      className={`input ${formErrors.cvv ? 'border-red-500' : ''}`}
-                    />
-                    {formErrors.cvv && <p className="text-red-600 text-xs mt-1">{formErrors.cvv}</p>}
+                    {formData.paymentMethod === 'card' && (
+                      <>
+                        <input
+                          type="text"
+                          name="cvv"
+                          placeholder="CVV *"
+                          value={formData.cvv}
+                          onChange={(e) => handleChange({...e, target: {...e.target, value: e.target.value.replace(/\D/g, '').substring(0, 4)}})}
+                          className={`input ${formErrors.cvv ? 'border-red-500' : ''}`}
+                        />
+                        {formErrors.cvv && <p className="text-red-600 text-xs mt-1">{formErrors.cvv}</p>}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -439,12 +482,24 @@ const Checkout = () => {
                   Edit
                 </button>
               </div>
-              <div className="bg-gray-50 p-4 rounded flex items-center gap-3">
-                <FaCreditCard size={24} className="text-blue-600" />
-                <div>
-                  <p className="font-semibold">Card ending in {formData.cardNumber.slice(-4)}</p>
-                  <p className="text-gray-600 text-sm">Expires: {formData.expiry}</p>
-                </div>
+              <div className="bg-gray-50 p-4 rounded">
+                {formData.paymentMethod === 'card' ? (
+                  <div className="flex items-center gap-3">
+                    <FaCreditCard size={24} className="text-blue-600" />
+                    <div>
+                      <p className="font-semibold">Card ending in {formData.cardNumber.slice(-4)}</p>
+                      <p className="text-gray-600 text-sm">Expires: {formData.expiry}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-700">
+                    <p className="font-semibold">Bank Transfer (test)</p>
+                    <p>Bank: Example Bank</p>
+                    <p>Account: 123456789</p>
+                    <p>Name: Access Health Test</p>
+                    {formData.transferReference && <p className="mt-2">Reference: {formData.transferReference}</p>}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -522,6 +577,7 @@ const Checkout = () => {
           </div>
         </div>
       )}
+      {/* Ensure order includes payment method and transfer reference in review/submit */}
     </div>
   )
 }

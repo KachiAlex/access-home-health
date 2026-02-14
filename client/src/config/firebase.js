@@ -21,4 +21,15 @@ export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const storage = getStorage(app)
 
+// Debug: log storage bucket used by the client to help diagnose upload permission errors
+try {
+  const bucket = firebaseConfig.storageBucket || '<missing>'
+  console.log('Firebase initialized. Storage bucket:', bucket)
+  if (!bucket || bucket.includes('YOUR_') || bucket.includes('your_project')) {
+    console.warn('Firebase storage bucket looks like a placeholder — set VITE_FIREBASE_STORAGE_BUCKET in client/.env or environment variables')
+  }
+} catch (e) {
+  console.warn('Could not log Firebase storage bucket:', e && e.message ? e.message : e)
+}
+
 export default app

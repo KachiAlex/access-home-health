@@ -2,10 +2,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isAdmin() {
-      return request.auth != null && request.auth.token.email in [
-        'admin@accesshomehealth.com',
-        'admin@accesshomehealthsupplies.com'
-      ];
+      return request.auth != null && (
+        // Support custom claim `admin: true` or explicit admin emails
+        (request.auth.token.admin == true) ||
+        (request.auth.token.email in [
+          'admin@accesshomehealth.com',
+          'admin@accesshomehealthsupplies.com'
+        ])
+      );
     }
 
     function isAuthenticated() {
@@ -29,9 +33,30 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
-      allow read, write: if isAdmin();
+      // Allow creating orders by either authenticated users (their own userId)
+      // or by guest users (no auth) as long as required contact/shipping fields are present.
+      allow create: if (
+        (isAuthenticated() && request.resource.data.userId == request.auth.uid)
+        || (
+          !isAuthenticated()
+          && request.resource.data.email is string
+          && request.resource.data.shipping is map
+          && request.resource.data.shipping.firstName is string
+          && request.resource.data.shipping.lastName is string
+          && request.resource.data.shipping.address is string
+        )
+      );
+
+      // Allow the order owner to read their order (when authenticated), and allow admins to read any order
+      allow read: if (isAuthenticated() && (resource.data.userId == request.auth.uid)) || isAdmin();
+
+      // Only admins may update or delete orders
+      allow update, delete: if isAdmin();
+
       match /items/{itemId} {
-        allow read, write: if isAdmin();
+        // Order items read: admins or the authenticated owner
+        allow read: if (isAuthenticated() && (resource.data.userId == request.auth.uid)) || isAdmin();
+        allow write: if isAdmin();
       }
     }
 

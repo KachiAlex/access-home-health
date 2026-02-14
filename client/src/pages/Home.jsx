@@ -63,7 +63,7 @@ const Home = () => {
       {/* Features Section */}
       <section className="bg-gradient-to-b from-white to-gray-50 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold text-center mb-4 animate-slide-up">Why Choose Us?</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold text-center mb-4 animate-slide-up">Why Choose Us?</h2>
           <p className="text-center text-gray-600 text-lg mb-12 animate-slide-up">Trusted by thousands for quality medical supplies</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 animate-stagger">
             {features.map((feature, index) => (
@@ -85,7 +85,7 @@ const Home = () => {
       {/* Featured Products Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 animate-slide-up">
         <div className="mb-12">
-          <h2 className="text-4xl font-bold mb-3">Featured Products</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold mb-3">Featured Products</h2>
           <p className="text-gray-600 text-lg">
             Discover our popular medical supplies and equipment
           </p>
@@ -129,7 +129,7 @@ const Home = () => {
       {/* Call to Action Section */}
       <section className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 text-white py-16 mt-16 animate-slide-up">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
             Need Help Finding What You Need?
           </h2>
           <p className="text-xl mb-10 text-blue-100">

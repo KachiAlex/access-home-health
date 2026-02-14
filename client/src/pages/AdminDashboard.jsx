@@ -10,17 +10,17 @@ import {
   FaUsers,
   FaCog,
   FaSave,
-  FaDownload,
   FaTimes,
-  FaCheck,
+  
 } from 'react-icons/fa'
+import ProductEditModal from '../components/ProductEditModal'
 import { useSettings } from '../hooks/useSettings'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { useProducts } from '../hooks/useProducts'
-import { PRODUCTS_SEED } from '../data/productsSeed'
 
 const AdminDashboard = () => {
+  
   const { user, userRole, loading } = useAuth()
   const { settings, updateSettings } = useSettings()
   const {
@@ -30,7 +30,7 @@ const AdminDashboard = () => {
     addProduct,
     updateProduct,
     deleteProduct,
-    seedProducts,
+    
   } = useProducts()
 
   const [activeTab, setActiveTab] = useState('products')
@@ -51,8 +51,9 @@ const AdminDashboard = () => {
     previewUrl: '',
   })
   const prevPreviewRef = useRef(null)
-  const [seeding, setSeeding] = useState(false)
-  const [seedSuccess, setSeedSuccess] = useState(false)
+  
+
+  console.debug('AdminDashboard render', { loading, userRole, activeTab })
 
   // Wait for auth to resolve; then redirect if not admin
   if (!loading && userRole !== 'admin') {
@@ -85,7 +86,12 @@ const AdminDashboard = () => {
   }, [newProduct.previewUrl])
 
   // Fetch recent orders from Firestore
+  // Fetch orders only when admin viewing the Orders tab and auth has settled.
   useEffect(() => {
+    if (loading) return
+    if (userRole !== 'admin') return
+    if (activeTab !== 'orders') return
+
     const fetchOrders = async () => {
       try {
         const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'))
@@ -95,8 +101,9 @@ const AdminDashboard = () => {
         console.error('Error fetching orders:', err)
       }
     }
+
     fetchOrders()
-  }, [])
+  }, [loading, userRole, activeTab])
 
   const handleAddOrUpdateProduct = async (e) => {
     e.preventDefault()
@@ -118,16 +125,9 @@ const AdminDashboard = () => {
       // If admin selected a file, attach it for upload handling in productService
       if (newProduct.imageFile) productData.imageFile = newProduct.imageFile
 
-      if (editingId) {
-        await updateProduct(editingId, productData)
-        alert('Product updated successfully!')
-        // force UI to reflect updated product immediately
-        // updateProduct uses Firestore listener to push changes to products list
-        setEditingId(null)
-      } else {
-        await addProduct(productData)
-        alert('Product added successfully!')
-      }
+      // Always add here; editing is handled in a modal to avoid scrolling
+      await addProduct(productData)
+      alert('Product added successfully!')
 
       setNewProduct({
         name: '',
@@ -144,31 +144,31 @@ const AdminDashboard = () => {
     }
   }
 
-  const handleEditProduct = (product) => {
-    setEditingId(product.id)
-    setNewProduct({
-      name: product.name,
-      price: product.price.toString(),
-      stock: product.stock.toString(),
-      description: product.description || '',
-      category: product.category || 'medical',
-      image: product.image || '',
-      previewUrl: product.image || '',
-    })
-  }
+  // Modal editing state
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [modalProduct, setModalProduct] = useState(null)
 
-  const handleCancelEdit = () => {
-    setEditingId(null)
-    setNewProduct({
+  const handleOpenAddModal = () => {
+    setModalProduct({
+      id: null,
       name: '',
       price: '',
       stock: '',
       description: '',
       category: 'medical',
       image: '',
-      imageFile: null,
-      previewUrl: '',
     })
+    setEditModalOpen(true)
+  }
+
+  const handleEditProduct = (product) => {
+    setModalProduct(product)
+    setEditModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setEditModalOpen(false)
+    setModalProduct(null)
   }
 
   const handleDeleteProduct = async (id) => {
@@ -179,6 +179,21 @@ const AdminDashboard = () => {
       } catch (error) {
         alert(`Error deleting product: ${error.message}`)
       }
+    }
+  }
+
+  const handleModalSave = async (productId, productData) => {
+    try {
+      if (productId) {
+        await updateProduct(productId, productData)
+        alert('Product updated successfully!')
+      } else {
+        await addProduct(productData)
+        alert('Product added successfully!')
+      }
+      handleCloseModal()
+    } catch (err) {
+      alert(`Error saving product: ${err.message}`)
     }
   }
 
@@ -210,25 +225,7 @@ const AdminDashboard = () => {
     }
   }
 
-  const handleSeedProducts = async () => {
-    if (
-      window.confirm(
-        `This will add ${PRODUCTS_SEED.length} products to your store. Continue?`
-      )
-    ) {
-      try {
-        setSeeding(true)
-        await seedProducts(PRODUCTS_SEED)
-        setSeedSuccess(true)
-        setTimeout(() => setSeedSuccess(false), 3000)
-        alert('Products seeded successfully!')
-      } catch (error) {
-        alert(`Error seeding products: ${error.message}`)
-      } finally {
-        setSeeding(false)
-      }
-    }
-  }
+  
 
   return (
     <div id="admin-dashboard-root" className="min-h-screen bg-gray-100">
@@ -288,17 +285,7 @@ const AdminDashboard = () => {
             >
               Products Management
             </button>
-            <button
-              onClick={() => setActiveTab('seed')}
-              className={`flex-1 px-6 py-4 font-semibold transition flex items-center justify-center space-x-2 ${
-                activeTab === 'seed'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <FaDownload size={16} />
-              <span>Seed Data</span>
-            </button>
+            {/* Seed tab removed */}
             <button
               onClick={() => setActiveTab('orders')}
               className={`flex-1 px-6 py-4 font-semibold transition ${
@@ -326,130 +313,21 @@ const AdminDashboard = () => {
           <div className="p-6">
             {activeTab === 'products' && (
               <div>
-                {/* Add/Edit Product Form */}
-                <div className="mb-8 p-6 bg-gray-50 rounded-lg">
-                  <h2 className="text-2xl font-bold mb-4">
-                    {editingId ? 'Edit Product' : 'Add New Product'}
-                  </h2>
-                  <form onSubmit={handleAddOrUpdateProduct} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <input
-                      type="text"
-                      placeholder="Product Name *"
-                      value={newProduct.name}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, name: e.target.value })
-                      }
-                      className="input"
-                      required
-                    />
-                    <input
-                      type="number"
-                      placeholder="Price *"
-                      value={newProduct.price}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, price: e.target.value })
-                      }
-                      className="input"
-                      step="0.01"
-                      required
-                    />
-                    <input
-                      type="number"
-                      placeholder="Stock Quantity *"
-                      value={newProduct.stock}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, stock: e.target.value })
-                      }
-                      className="input"
-                      required
-                    />
-                    <select
-                      value={newProduct.category}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, category: e.target.value })
-                      }
-                      className="input"
-                    >
-                      <option value="medical">Medical Supplies</option>
-                      <option value="mobility">Mobility Aids</option>
-                      <option value="bedroom">Bedroom Equipment</option>
-                      <option value="bathroom">Bathroom Aids</option>
-                      <option value="footwear">Footwear</option>
-                      <option value="braces">Braces & Support</option>
-                      <option value="diagnostics">Diagnostics</option>
-                      <option value="personal-care">Personal Care</option>
-                    </select>
-                    <input
-                      type="url"
-                      placeholder="Image URL"
-                      value={newProduct.image}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, image: e.target.value })
-                      }
-                      className="input"
-                    />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null
-                        if (!file) {
-                          setNewProduct({ ...newProduct, imageFile: null, previewUrl: '' })
-                          return
-                        }
-                        const reader = new FileReader()
-                        reader.onload = () => {
-                          setNewProduct((prev) => ({ ...prev, imageFile: file, previewUrl: reader.result }))
-                        }
-                        reader.readAsDataURL(file)
-                      }}
-                      className="input"
-                    />
-                    {/* Live Image Preview */}
-                    <div className="col-span-1 md:col-span-2 lg:col-span-3 mt-2">
-                      <p className="text-sm text-gray-600 mb-1">Image preview</p>
-                      <div className="w-32 h-32 bg-gray-100 rounded overflow-hidden border">
-                        {newProduct.previewUrl || newProduct.image ? (
-                          <img
-                            src={newProduct.previewUrl || newProduct.image}
-                            alt="Preview"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">No image</div>
-                        )}
-                      </div>
-                    </div>
-                    <textarea
-                      placeholder="Description"
-                      value={newProduct.description}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, description: e.target.value })
-                      }
-                      className="input col-span-1 md:col-span-2 lg:col-span-3"
-                      rows="3"
-                    />
-                    <div className="col-span-1 md:col-span-2 lg:col-span-3 flex gap-2">
-                      <button
-                        type="submit"
-                        className="btn btn-primary flex items-center justify-center space-x-2 flex-1"
-                      >
-                        <FaSave />
-                        <span>{editingId ? 'Update Product' : 'Add Product'}</span>
-                      </button>
-                      {editingId && (
-                        <button
-                          type="button"
-                          onClick={handleCancelEdit}
-                          className="btn btn-outline flex items-center justify-center space-x-2"
-                        >
-                          <FaTimes />
-                          <span>Cancel</span>
-                        </button>
-                      )}
-                    </div>
-                  </form>
-                </div>
+                  <div className="mb-8 p-6 bg-gray-50 rounded-lg flex items-center justify-between">
+                    <h2 className="text-2xl font-bold">Products Management</h2>
+                    <button onClick={handleOpenAddModal} className="btn btn-primary flex items-center space-x-2">
+                      <FaPlus />
+                      <span>Add Product</span>
+                    </button>
+                  </div>
+
+                {/* Edit modal (opened by Edit button in list) */}
+                <ProductEditModal
+                  product={modalProduct}
+                  open={editModalOpen}
+                  onClose={handleCloseModal}
+                  onSave={handleModalSave}
+                />
 
                 {/* Products Table */}
                 {productsLoading ? (
@@ -462,7 +340,7 @@ const AdminDashboard = () => {
                   </div>
                 ) : products.length === 0 ? (
                   <div className="text-center py-12">
-                    <p className="text-gray-500 text-lg">No products yet. Add your first product above or use Seed Data tab!</p>
+                    <p className="text-gray-500 text-lg">No products yet. Add your first product above.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -520,84 +398,7 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {activeTab === 'seed' && (
-              <div className="max-w-2xl">
-                <h2 className="text-2xl font-bold mb-6">Seed Your Catalog</h2>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-3">
-                    🚀 Quick Start Your Store
-                  </h3>
-                  <p className="text-blue-800 mb-4">
-                    This will add {PRODUCTS_SEED.length} pre-configured medical products to your store:
-                  </p>
-                  <ul className="grid grid-cols-2 gap-2 text-sm text-blue-800 mb-6">
-                    {PRODUCTS_SEED.slice(0, 8).map((p) => (
-                      <li key={p.name} className="flex items-start">
-                        <FaCheck className="mr-2 text-green-600 mt-0.5 flex-shrink-0" />
-                        {p.name}
-                      </li>
-                    ))}
-                    <li className="col-span-2 text-blue-700 font-semibold">
-                      + {PRODUCTS_SEED.length - 8} more products...
-                    </li>
-                  </ul>
-                  <p className="text-sm text-blue-700 mb-6">
-                    Each product includes a name, price, stock quantity, description, and professional image from Unsplash.
-                  </p>
-                  <button
-                    onClick={handleSeedProducts}
-                    disabled={seeding || products.length > 0}
-                    className={`btn ${
-                      products.length > 0 ? 'bg-gray-400' : 'btn-primary'
-                    } flex items-center justify-center space-x-2 w-full`}
-                  >
-                    <FaDownload />
-                    <span>
-                      {seeding
-                        ? 'Seeding...'
-                        : products.length > 0
-                        ? 'Store Already Has Products'
-                        : 'Seed All Products Now'}
-                    </span>
-                  </button>
-                  {seedSuccess && (
-                    <p className="text-green-600 text-sm mt-4 font-semibold">
-                      ✓ Products seeded successfully!
-                    </p>
-                  )}
-                </div>
-
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold mb-4">Included Products</h3>
-                  <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto">
-                    {PRODUCTS_SEED.map((product) => (
-                      <div
-                        key={product.name}
-                        className="flex items-start p-3 bg-white rounded border border-gray-200"
-                      >
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-12 h-12 rounded mr-3 object-cover"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900">{product.name}</p>
-                          <p className="text-sm text-gray-600 line-clamp-1">
-                            {product.description}
-                          </p>
-                          <div className="flex justify-between mt-1 text-sm">
-                            <span className="text-green-600 font-semibold">
-                              ${product.price.toFixed(2)}
-                            </span>
-                            <span className="text-gray-600">Stock: {product.stock}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Seed tab removed */}
 
             {activeTab === 'orders' && (
               <div>

@@ -11,6 +11,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import AdminDashboard from './pages/AdminDashboard'
+import ErrorBoundary from './components/ErrorBoundary'
 import AdminAnalytics from './pages/AdminAnalytics'
 import { CartProvider } from './context/CartContext'
 import { AuthProvider } from './context/AuthContext'
@@ -37,11 +38,11 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/products" element={<Products />} />
             <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+            <Route path="/checkout" element={<Checkout />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin" element={<ErrorBoundary><AdminDashboard /></ErrorBoundary>} />
             <Route path="/admin/analytics" element={<AdminAnalytics />} />
           </Routes>
           <Footer />
