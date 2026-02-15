@@ -14,11 +14,13 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center">
-            <img 
-              src="/logo.png" 
-              alt="Access Health Logo" 
-              className="h-16 w-auto hover:scale-105 transition-transform"
-            />
+            <span className="inline-flex items-center justify-center bg-white rounded-md p-1">
+              <img
+                src="/logo.png"
+                alt="Access Health Logo"
+                className="h-28 w-auto hover:scale-105 transition-transform"
+              />
+            </span>
           </Link>
 
           {/* Nav Links */}

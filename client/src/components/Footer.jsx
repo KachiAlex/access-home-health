@@ -8,11 +8,9 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Company Info */}
           <div>
-            <img 
-              src="/logo.png" 
-              alt="Access Health Logo" 
-              className="h-16 w-auto mb-4"
-            />
+            <span className="inline-flex items-center justify-center bg-white rounded-md p-1 mb-4">
+              <img src="/logo.png" alt="Access Health Logo" className="h-28 w-auto" />
+            </span>
             <p className="text-gray-400">
               Your trusted partner for home health and medical supplies.
             </p>
@@ -90,9 +88,13 @@ const Footer = () => {
               </a>
             </div>
             <p className="text-gray-400 text-sm">
-              📞 1-800-ACCESS-1
+              2215 West 95th Street
               <br />
-              📧 support@accesshealth.com
+              Chicago, IL 60643
+              <br />
+              📞 773.716.8911
+              <br />
+              📧 support@accesshomehealthsupplies.com
             </p>
           </div>
         </div>

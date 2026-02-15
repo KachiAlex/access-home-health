@@ -10,15 +10,13 @@ import {
   FaUsers,
   FaCog,
   FaSave,
-  FaDownload,
   FaTimes,
-  FaCheck,
+  
 } from 'react-icons/fa'
 import { useSettings } from '../hooks/useSettings'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { useProducts } from '../hooks/useProducts'
-import { PRODUCTS_SEED } from '../data/productsSeed'
 
 const AdminDashboard = () => {
   const { user, userRole, loading } = useAuth()
@@ -51,8 +49,7 @@ const AdminDashboard = () => {
     previewUrl: '',
   })
   const prevPreviewRef = useRef(null)
-  const [seeding, setSeeding] = useState(false)
-  const [seedSuccess, setSeedSuccess] = useState(false)
+  
 
   // Wait for auth to resolve; then redirect if not admin
   if (!loading && userRole !== 'admin') {
@@ -210,25 +207,7 @@ const AdminDashboard = () => {
     }
   }
 
-  const handleSeedProducts = async () => {
-    if (
-      window.confirm(
-        `This will add ${PRODUCTS_SEED.length} products to your store. Continue?`
-      )
-    ) {
-      try {
-        setSeeding(true)
-        await seedProducts(PRODUCTS_SEED)
-        setSeedSuccess(true)
-        setTimeout(() => setSeedSuccess(false), 3000)
-        alert('Products seeded successfully!')
-      } catch (error) {
-        alert(`Error seeding products: ${error.message}`)
-      } finally {
-        setSeeding(false)
-      }
-    }
-  }
+  
 
   return (
     <div id="admin-dashboard-root" className="min-h-screen bg-gray-100">
@@ -288,17 +267,7 @@ const AdminDashboard = () => {
             >
               Products Management
             </button>
-            <button
-              onClick={() => setActiveTab('seed')}
-              className={`flex-1 px-6 py-4 font-semibold transition flex items-center justify-center space-x-2 ${
-                activeTab === 'seed'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <FaDownload size={16} />
-              <span>Seed Data</span>
-            </button>
+            {/* Seed tab removed */}
             <button
               onClick={() => setActiveTab('orders')}
               className={`flex-1 px-6 py-4 font-semibold transition ${
@@ -462,7 +431,7 @@ const AdminDashboard = () => {
                   </div>
                 ) : products.length === 0 ? (
                   <div className="text-center py-12">
-                    <p className="text-gray-500 text-lg">No products yet. Add your first product above or use Seed Data tab!</p>
+                    <p className="text-gray-500 text-lg">No products yet. Add your first product above.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -520,84 +489,7 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {activeTab === 'seed' && (
-              <div className="max-w-2xl">
-                <h2 className="text-2xl font-bold mb-6">Seed Your Catalog</h2>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-3">
-                    🚀 Quick Start Your Store
-                  </h3>
-                  <p className="text-blue-800 mb-4">
-                    This will add {PRODUCTS_SEED.length} pre-configured medical products to your store:
-                  </p>
-                  <ul className="grid grid-cols-2 gap-2 text-sm text-blue-800 mb-6">
-                    {PRODUCTS_SEED.slice(0, 8).map((p) => (
-                      <li key={p.name} className="flex items-start">
-                        <FaCheck className="mr-2 text-green-600 mt-0.5 flex-shrink-0" />
-                        {p.name}
-                      </li>
-                    ))}
-                    <li className="col-span-2 text-blue-700 font-semibold">
-                      + {PRODUCTS_SEED.length - 8} more products...
-                    </li>
-                  </ul>
-                  <p className="text-sm text-blue-700 mb-6">
-                    Each product includes a name, price, stock quantity, description, and professional image from Unsplash.
-                  </p>
-                  <button
-                    onClick={handleSeedProducts}
-                    disabled={seeding || products.length > 0}
-                    className={`btn ${
-                      products.length > 0 ? 'bg-gray-400' : 'btn-primary'
-                    } flex items-center justify-center space-x-2 w-full`}
-                  >
-                    <FaDownload />
-                    <span>
-                      {seeding
-                        ? 'Seeding...'
-                        : products.length > 0
-                        ? 'Store Already Has Products'
-                        : 'Seed All Products Now'}
-                    </span>
-                  </button>
-                  {seedSuccess && (
-                    <p className="text-green-600 text-sm mt-4 font-semibold">
-                      ✓ Products seeded successfully!
-                    </p>
-                  )}
-                </div>
-
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold mb-4">Included Products</h3>
-                  <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto">
-                    {PRODUCTS_SEED.map((product) => (
-                      <div
-                        key={product.name}
-                        className="flex items-start p-3 bg-white rounded border border-gray-200"
-                      >
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-12 h-12 rounded mr-3 object-cover"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900">{product.name}</p>
-                          <p className="text-sm text-gray-600 line-clamp-1">
-                            {product.description}
-                          </p>
-                          <div className="flex justify-between mt-1 text-sm">
-                            <span className="text-green-600 font-semibold">
-                              ${product.price.toFixed(2)}
-                            </span>
-                            <span className="text-gray-600">Stock: {product.stock}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Seed tab removed */}
 
             {activeTab === 'orders' && (
               <div>
