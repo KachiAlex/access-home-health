@@ -13,12 +13,16 @@ import {
   FaTimes,
   
 } from 'react-icons/fa'
+import ProductEditModal from '../components/ProductEditModal'
+import OrderDetailsModal from '../components/OrderDetailsModal'
 import { useSettings } from '../hooks/useSettings'
+import PasswordChangeForm from '../components/PasswordChangeForm'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { useProducts } from '../hooks/useProducts'
 
 const AdminDashboard = () => {
+  
   const { user, userRole, loading } = useAuth()
   const { settings, updateSettings } = useSettings()
   const {
@@ -28,7 +32,7 @@ const AdminDashboard = () => {
     addProduct,
     updateProduct,
     deleteProduct,
-    seedProducts,
+    
   } = useProducts()
 
   const [activeTab, setActiveTab] = useState('products')
@@ -50,7 +54,6 @@ const AdminDashboard = () => {
   })
   const prevPreviewRef = useRef(null)
   
-
   // Wait for auth to resolve; then redirect if not admin
   if (!loading && userRole !== 'admin') {
     return <Navigate to="/" />
@@ -82,7 +85,12 @@ const AdminDashboard = () => {
   }, [newProduct.previewUrl])
 
   // Fetch recent orders from Firestore
+  // Fetch orders only when admin viewing the Orders tab and auth has settled.
   useEffect(() => {
+    if (loading) return
+    if (userRole !== 'admin') return
+    if (activeTab !== 'orders') return
+
     const fetchOrders = async () => {
       try {
         const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'))
@@ -92,8 +100,9 @@ const AdminDashboard = () => {
         console.error('Error fetching orders:', err)
       }
     }
+
     fetchOrders()
-  }, [])
+  }, [loading, userRole, activeTab])
 
   const handleAddOrUpdateProduct = async (e) => {
     e.preventDefault()
@@ -115,16 +124,9 @@ const AdminDashboard = () => {
       // If admin selected a file, attach it for upload handling in productService
       if (newProduct.imageFile) productData.imageFile = newProduct.imageFile
 
-      if (editingId) {
-        await updateProduct(editingId, productData)
-        alert('Product updated successfully!')
-        // force UI to reflect updated product immediately
-        // updateProduct uses Firestore listener to push changes to products list
-        setEditingId(null)
-      } else {
-        await addProduct(productData)
-        alert('Product added successfully!')
-      }
+      // Always add here; editing is handled in a modal to avoid scrolling
+      await addProduct(productData)
+      alert('Product added successfully!')
 
       setNewProduct({
         name: '',
@@ -141,31 +143,33 @@ const AdminDashboard = () => {
     }
   }
 
-  const handleEditProduct = (product) => {
-    setEditingId(product.id)
-    setNewProduct({
-      name: product.name,
-      price: product.price.toString(),
-      stock: product.stock.toString(),
-      description: product.description || '',
-      category: product.category || 'medical',
-      image: product.image || '',
-      previewUrl: product.image || '',
-    })
-  }
+  // Modal editing state
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [modalProduct, setModalProduct] = useState(null)
+  const [orderModalOpen, setOrderModalOpen] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState(null)
 
-  const handleCancelEdit = () => {
-    setEditingId(null)
-    setNewProduct({
+  const handleOpenAddModal = () => {
+    setModalProduct({
+      id: null,
       name: '',
       price: '',
       stock: '',
       description: '',
       category: 'medical',
       image: '',
-      imageFile: null,
-      previewUrl: '',
     })
+    setEditModalOpen(true)
+  }
+
+  const handleEditProduct = (product) => {
+    setModalProduct(product)
+    setEditModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setEditModalOpen(false)
+    setModalProduct(null)
   }
 
   const handleDeleteProduct = async (id) => {
@@ -176,6 +180,21 @@ const AdminDashboard = () => {
       } catch (error) {
         alert(`Error deleting product: ${error.message}`)
       }
+    }
+  }
+
+  const handleModalSave = async (productId, productData) => {
+    try {
+      if (productId) {
+        await updateProduct(productId, productData)
+        alert('Product updated successfully!')
+      } else {
+        await addProduct(productData)
+        alert('Product added successfully!')
+      }
+      handleCloseModal()
+    } catch (err) {
+      alert(`Error saving product: ${err.message}`)
     }
   }
 
@@ -295,130 +314,21 @@ const AdminDashboard = () => {
           <div className="p-6">
             {activeTab === 'products' && (
               <div>
-                {/* Add/Edit Product Form */}
-                <div className="mb-8 p-6 bg-gray-50 rounded-lg">
-                  <h2 className="text-2xl font-bold mb-4">
-                    {editingId ? 'Edit Product' : 'Add New Product'}
-                  </h2>
-                  <form onSubmit={handleAddOrUpdateProduct} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <input
-                      type="text"
-                      placeholder="Product Name *"
-                      value={newProduct.name}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, name: e.target.value })
-                      }
-                      className="input"
-                      required
-                    />
-                    <input
-                      type="number"
-                      placeholder="Price *"
-                      value={newProduct.price}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, price: e.target.value })
-                      }
-                      className="input"
-                      step="0.01"
-                      required
-                    />
-                    <input
-                      type="number"
-                      placeholder="Stock Quantity *"
-                      value={newProduct.stock}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, stock: e.target.value })
-                      }
-                      className="input"
-                      required
-                    />
-                    <select
-                      value={newProduct.category}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, category: e.target.value })
-                      }
-                      className="input"
-                    >
-                      <option value="medical">Medical Supplies</option>
-                      <option value="mobility">Mobility Aids</option>
-                      <option value="bedroom">Bedroom Equipment</option>
-                      <option value="bathroom">Bathroom Aids</option>
-                      <option value="footwear">Footwear</option>
-                      <option value="braces">Braces & Support</option>
-                      <option value="diagnostics">Diagnostics</option>
-                      <option value="personal-care">Personal Care</option>
-                    </select>
-                    <input
-                      type="url"
-                      placeholder="Image URL"
-                      value={newProduct.image}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, image: e.target.value })
-                      }
-                      className="input"
-                    />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null
-                        if (!file) {
-                          setNewProduct({ ...newProduct, imageFile: null, previewUrl: '' })
-                          return
-                        }
-                        const reader = new FileReader()
-                        reader.onload = () => {
-                          setNewProduct((prev) => ({ ...prev, imageFile: file, previewUrl: reader.result }))
-                        }
-                        reader.readAsDataURL(file)
-                      }}
-                      className="input"
-                    />
-                    {/* Live Image Preview */}
-                    <div className="col-span-1 md:col-span-2 lg:col-span-3 mt-2">
-                      <p className="text-sm text-gray-600 mb-1">Image preview</p>
-                      <div className="w-32 h-32 bg-gray-100 rounded overflow-hidden border">
-                        {newProduct.previewUrl || newProduct.image ? (
-                          <img
-                            src={newProduct.previewUrl || newProduct.image}
-                            alt="Preview"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">No image</div>
-                        )}
-                      </div>
-                    </div>
-                    <textarea
-                      placeholder="Description"
-                      value={newProduct.description}
-                      onChange={(e) =>
-                        setNewProduct({ ...newProduct, description: e.target.value })
-                      }
-                      className="input col-span-1 md:col-span-2 lg:col-span-3"
-                      rows="3"
-                    />
-                    <div className="col-span-1 md:col-span-2 lg:col-span-3 flex gap-2">
-                      <button
-                        type="submit"
-                        className="btn btn-primary flex items-center justify-center space-x-2 flex-1"
-                      >
-                        <FaSave />
-                        <span>{editingId ? 'Update Product' : 'Add Product'}</span>
-                      </button>
-                      {editingId && (
-                        <button
-                          type="button"
-                          onClick={handleCancelEdit}
-                          className="btn btn-outline flex items-center justify-center space-x-2"
-                        >
-                          <FaTimes />
-                          <span>Cancel</span>
-                        </button>
-                      )}
-                    </div>
-                  </form>
-                </div>
+                  <div className="mb-8 p-6 bg-gray-50 rounded-lg flex items-center justify-between">
+                    <h2 className="text-2xl font-bold">Products Management</h2>
+                    <button onClick={handleOpenAddModal} className="btn btn-primary flex items-center space-x-2">
+                      <FaPlus />
+                      <span>Add Product</span>
+                    </button>
+                  </div>
+
+                {/* Edit modal (opened by Edit button in list) */}
+                <ProductEditModal
+                  product={modalProduct}
+                  open={editModalOpen}
+                  onClose={handleCloseModal}
+                  onSave={handleModalSave}
+                />
 
                 {/* Products Table */}
                 {productsLoading ? (
@@ -530,7 +440,7 @@ const AdminDashboard = () => {
                             </td>
                             <td className="px-6 py-3">{order.date}</td>
                             <td className="px-6 py-3">
-                              <button className="text-blue-600 hover:text-blue-800 font-semibold">
+                              <button onClick={() => { setSelectedOrder(order); setOrderModalOpen(true) }} className="text-blue-600 hover:text-blue-800 font-semibold">
                                 View Details
                               </button>
                             </td>
@@ -540,6 +450,7 @@ const AdminDashboard = () => {
                     </table>
                   </div>
                 )}
+                <OrderDetailsModal order={selectedOrder} open={orderModalOpen} onClose={() => { setOrderModalOpen(false); setSelectedOrder(null) }} />
               </div>
             )}
 
@@ -599,6 +510,13 @@ const AdminDashboard = () => {
                     )}
                   </div>
                 </form>
+
+                {/* Admin password change */}
+                <div className="mt-8 p-6 bg-gray-50 rounded-lg max-w-2xl">
+                  <h3 className="text-lg font-semibold mb-4">Change Admin Password</h3>
+                  <p className="text-sm text-gray-600 mb-4">Admins can change their account password here.</p>
+                  <PasswordChangeForm />
+                </div>
               </div>
             )}
           </div>

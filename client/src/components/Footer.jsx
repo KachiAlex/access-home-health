@@ -1,7 +1,13 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin } from 'react-icons/fa'
+import ContactModal from './ContactModal'
 
 const Footer = () => {
+  const [contactOpen, setContactOpen] = useState(false)
+  const openContact = () => setContactOpen(true)
+  const closeContact = () => setContactOpen(false)
+
   return (
     <footer className="bg-gray-800 text-white mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -9,11 +15,9 @@ const Footer = () => {
           {/* Company Info */}
           <div>
             <span className="inline-flex items-center justify-center bg-white rounded-md p-1 mb-4">
-              <img src="/logo.png" alt="Access Health Logo" className="h-28 w-auto" />
+              <img src="/logo.png" alt="Access Health Logo" className="h-12 sm:h-16 md:h-20 lg:h-28 w-auto hover:scale-105 transition-transform" />
             </span>
-            <p className="text-gray-400">
-              Your trusted partner for home health and medical supplies.
-            </p>
+            <p className="text-gray-400">Your trusted partner for home health and medical supplies.</p>
           </div>
 
           {/* Quick Links */}
@@ -36,9 +40,7 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="hover:text-white transition">
-                  Contact
-                </Link>
+                <button onClick={openContact} className="hover:text-white transition text-left">Contact</button>
               </li>
             </ul>
           </div>
@@ -88,6 +90,7 @@ const Footer = () => {
               </a>
             </div>
             <p className="text-gray-400 text-sm">
+<<<<<<< HEAD
               2215 West 95th Street
               <br />
               Chicago, IL 60643
@@ -95,6 +98,13 @@ const Footer = () => {
               📞 773.716.8911
               <br />
               📧 support@accesshomehealthsupplies.com
+=======
+              2215 West 95th Street, Chicago, IL. 60643
+              <br />
+              Phone: 773.716.8911
+              <br />
+              Email: <button onClick={openContact} className="hover:underline">support@accesshomehealthsupplies.com</button>
+>>>>>>> 23a37bde07fc87d725bad29add0cba10ac490d87
             </p>
           </div>
         </div>
@@ -118,6 +128,7 @@ const Footer = () => {
             </div>
           </div>
         </div>
+        <ContactModal open={contactOpen} onClose={closeContact} />
       </div>
     </footer>
   )
