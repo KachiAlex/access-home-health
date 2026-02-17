@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useCart } from '../hooks/useAuth'
 import { useAuth } from '../hooks/useAuth'
 import { logEvent } from '../services/analyticsService'
@@ -7,10 +7,13 @@ import app, { db } from '../config/firebase'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { Link, useNavigate } from 'react-router-dom'
 import { FaCheckCircle, FaCreditCard, FaLock, FaArrowLeft } from 'react-icons/fa'
+import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
+import { useSettings } from '../hooks/useSettings'
 
 const Checkout = () => {
   const { cartItems, getTotalPrice, clearCart } = useCart()
   const { user } = useAuth()
+  const { settings } = useSettings()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [formErrors, setFormErrors] = useState({})
@@ -30,6 +33,25 @@ const Checkout = () => {
     paymentMethod: 'card',
     transferReference: '',
   })
+  const [paypalError, setPaypalError] = useState('')
+  const [paypalLoading, setPaypalLoading] = useState(false)
+
+  const paypalClientId = settings?.paypalClientId || ''
+  const paypalEnabled = Boolean(paypalClientId)
+  const paypalOptions = useMemo(() => {
+    if (!paypalClientId) return null
+    return {
+      'client-id': paypalClientId,
+      currency: 'USD',
+      intent: 'CAPTURE',
+    }
+  }, [paypalClientId])
+
+  useEffect(() => {
+    if (!paypalEnabled && formData.paymentMethod === 'paypal') {
+      setFormData((prev) => ({ ...prev, paymentMethod: 'card' }))
+    }
+  }, [paypalEnabled, formData.paymentMethod])
 
   if (cartItems.length === 0) {
     return (
@@ -60,6 +82,62 @@ const Checkout = () => {
   const total = getTotalPrice()
   const tax = total * 0.08
   const finalTotal = total + tax
+
+  const buildOrderData = () => ({
+    items: cartItems,
+    total: Number(finalTotal.toFixed(2)),
+    userId: user?.uid || null,
+    email: formData.email,
+    customerName: `${formData.firstName} ${formData.lastName}`.trim(),
+    phone: formData.phone,
+    shipping: {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      address: formData.address,
+      city: formData.city,
+      state: formData.state,
+      zip: formData.zipCode,
+    },
+  })
+
+  const postOrderSuccess = async ({ orderId, order, paymentMethod }) => {
+    const resolvedPaymentMethod =
+      paymentMethod || order?.paymentMethod || formData.paymentMethod || 'card'
+
+    try {
+      await logEvent('order_placed', {
+        userId: order?.userId || user?.uid || null,
+        total: order?.total || finalTotal,
+        items: order?.items?.length ?? cartItems.length,
+        orderId,
+        paymentMethod: resolvedPaymentMethod,
+      })
+    } catch (err) {
+      console.warn('Analytics logging failed', err)
+    }
+
+    if (order?.email) {
+      try {
+        const functions = getFunctions(app)
+        const sendOrderEmail = httpsCallable(functions, 'sendOrderEmailV2')
+        const totalValue = Number(order?.total ?? finalTotal).toFixed(2)
+        const html = `<p>Thank you for your order. Order #${orderId}. Order total: $${totalValue}</p>`
+        await sendOrderEmail({ to: order.email, subject: 'Order Confirmation', html })
+      } catch (fnErr) {
+        console.warn('Send email function call failed', fnErr)
+      }
+    }
+  }
+
+  const getAuthHeaders = async () => {
+    const token = await user?.getIdToken?.()
+    if (!token) {
+      throw new Error('You must be logged in to use PayPal checkout.')
+    }
+    return {
+      Authorization: `Bearer ${token}`,
+    }
+  }
 
   const validateForm = () => {
     const errors = {}
@@ -108,57 +186,44 @@ const Checkout = () => {
     }
   }
 
+  const finalizeOrder = async ({ paymentMethod, status, meta } = {}) => {
+    const resolvedPaymentMethod = paymentMethod || formData.paymentMethod || 'card'
+    const resolvedStatus =
+      status ||
+      (resolvedPaymentMethod === 'transfer'
+        ? 'Pending Transfer'
+        : resolvedPaymentMethod === 'paypal'
+        ? 'Paid'
+        : 'Pending')
+
+    const baseOrder = buildOrderData()
+    const order = {
+      ...baseOrder,
+      paymentMethod: resolvedPaymentMethod,
+      transferReference:
+        resolvedPaymentMethod === 'transfer' ? formData.transferReference || null : null,
+      status: resolvedStatus,
+      createdAt: serverTimestamp(),
+      ...meta,
+    }
+
+    const docRef = await addDoc(collection(db, 'orders'), order)
+    const orderId = docRef.id
+
+    await postOrderSuccess({ orderId, order, paymentMethod: resolvedPaymentMethod })
+
+    return { orderId, order }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (formData.paymentMethod === 'paypal') {
+      setPaypalError('Please complete your payment using the PayPal button below.')
+      return
+    }
     setLoading(true)
     try {
-      // Create the order in Firestore
-      const order = {
-        items: cartItems,
-        total: finalTotal,
-        userId: user?.uid || null,
-        email: formData.email,
-        shipping: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          zip: formData.zipCode,
-        },
-        paymentMethod: formData.paymentMethod || 'card',
-        transferReference: formData.transferReference || null,
-        status: formData.paymentMethod === 'transfer' ? 'Pending Transfer' : 'Pending',
-        createdAt: serverTimestamp(),
-      }
-
-      let orderId = null
-      try {
-        const docRef = await addDoc(collection(db, 'orders'), order)
-        orderId = docRef.id
-      } catch (err) {
-        console.error('Failed to persist order:', err)
-        throw err
-      }
-
-      // Log analytics event
-      try {
-        await logEvent('order_placed', { userId: order.userId, total: order.total, items: order.items.length, orderId })
-      } catch (err) {
-        console.warn('Analytics logging failed', err)
-      }
-
-      // Attempt to call Cloud Function to send email (if configured)
-      try {
-        const functions = getFunctions(app)
-        const sendOrderEmail = httpsCallable(functions, 'sendOrderEmailV2')
-        const html = `<p>Thank you for your order. Order #${orderId}. Order total: $${order.total.toFixed(2)}</p>`
-        await sendOrderEmail({ to: order.email, subject: 'Order Confirmation', html })
-      } catch (fnErr) {
-        console.warn('Send email function call failed', fnErr)
-      }
-
-      // Success
+      const { orderId } = await finalizeOrder()
       alert(`✓ Order placed successfully! Order #${orderId}`)
       clearCart()
       navigate('/')
@@ -170,7 +235,92 @@ const Checkout = () => {
     }
   }
 
-  return (
+  const createServerPayPalOrder = async () => {
+    setPaypalError('')
+    setPaypalLoading(true)
+    try {
+      const response = await fetch('/api/paypal/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(await getAuthHeaders()),
+        },
+        body: JSON.stringify({
+          amount: Number(finalTotal.toFixed(2)),
+          currency: 'USD',
+          description: `Order total for ${cartItems.length} item(s)`,
+          items: cartItems.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: Number(item.price || 0),
+          })),
+        }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok || !data?.id) {
+        throw new Error(data?.error || 'Failed to create PayPal order')
+      }
+      return data.id
+    } catch (err) {
+      console.error('PayPal create order error', err)
+      const message = err?.message || 'Unable to create PayPal order. Please try again.'
+      setPaypalError(message)
+      throw err
+    } finally {
+      setPaypalLoading(false)
+    }
+  }
+
+  const handlePayPalApprove = async (data) => {
+    if (!data?.orderID) {
+      setPaypalError('Missing PayPal order information. Please try again.')
+      return
+    }
+    setPaypalError('')
+    setPaypalLoading(true)
+    try {
+      const response = await fetch('/api/paypal/capture-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(await getAuthHeaders()),
+        },
+        body: JSON.stringify({
+          orderId: data.orderID,
+          orderData: buildOrderData(),
+        }),
+      })
+
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to capture PayPal order')
+      }
+
+      await postOrderSuccess({
+        orderId: result.orderId,
+        order:
+          result.order || {
+            ...buildOrderData(),
+            paymentMethod: 'paypal',
+            status: 'Paid',
+          },
+        paymentMethod: 'paypal',
+      })
+
+      alert(`✓ Payment received! Order #${result.orderId}`)
+      clearCart()
+      navigate('/')
+    } catch (err) {
+      console.error('PayPal approval error:', err)
+      const message = err?.message || 'PayPal payment failed. Please try again or use another method.'
+      setPaypalError(message)
+    } finally {
+      setPaypalLoading(false)
+    }
+  }
+
+  const checkoutContent = (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 page-transition">
       {/* Progress Bar */}
       <div className="mb-12">
@@ -309,8 +459,8 @@ const Checkout = () => {
                 </div>
 
                 {/* Payment method selector */}
-                <div className="mb-4">
-                  <label className="inline-flex items-center mr-6">
+                <div className="mb-4 flex flex-wrap gap-4 items-center">
+                  <label className="inline-flex items-center">
                     <input type="radio" name="paymentMethod" value="card" checked={formData.paymentMethod === 'card'} onChange={handleChange} className="mr-2" />
                     <span>Card</span>
                   </label>
@@ -318,6 +468,16 @@ const Checkout = () => {
                     <input type="radio" name="paymentMethod" value="transfer" checked={formData.paymentMethod === 'transfer'} onChange={handleChange} className="mr-2" />
                     <span>Bank Transfer (test)</span>
                   </label>
+                  {paypalEnabled ? (
+                    <label className="inline-flex items-center">
+                      <input type="radio" name="paymentMethod" value="paypal" checked={formData.paymentMethod === 'paypal'} onChange={handleChange} className="mr-2" />
+                      <span>PayPal</span>
+                    </label>
+                  ) : (
+                    <span className="text-xs text-gray-500">
+                      PayPal checkout is disabled until a client ID is configured by admin.
+                    </span>
+                  )}
                 </div>
 
                 {/* Transfer instructions when selected */}
@@ -328,30 +488,49 @@ const Checkout = () => {
                     <p>Account: 123456789</p>
                     <p>Name: Access Health Test</p>
                     <p className="mt-2">After sending, optionally enter the transaction reference below.</p>
-                    <input type="text" name="transferReference" placeholder="Transaction reference (optional)" value={formData.transferReference} onChange={handleChange} className="input w-full mt-2" />
+                    <input
+                      type="text"
+                      name="transferReference"
+                      placeholder="Transaction reference (optional)"
+                      value={formData.transferReference}
+                      onChange={handleChange}
+                      className="input w-full mt-2"
+                    />
                   </div>
                 )}
 
-                <div>
-                  {formData.paymentMethod === 'card' && (
-                    <>
-                      <input
-                        type="text"
-                        name="cardNumber"
-                        placeholder="Card Number (16 digits) *"
-                        value={formData.cardNumber}
-                        onChange={(e) => handleChange({...e, target: {...e.target, value: e.target.value.replace(/\D/g, '').substring(0, 16)}})}
-                        className={`input w-full mb-4 ${formErrors.cardNumber ? 'border-red-500' : ''}`}
-                      />
-                      {formErrors.cardNumber && <p className="text-red-600 text-xs mt-1 mb-4">{formErrors.cardNumber}</p>}
-                    </>
-                  )}
-                </div>
+                {/* PayPal helper copy */}
+                {formData.paymentMethod === 'paypal' && paypalEnabled && (
+                  <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-900">
+                    <p className="font-semibold">Pay with PayPal</p>
+                    <p>Review your order below, then click the PayPal button to complete payment.</p>
+                  </div>
+                )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    {formData.paymentMethod === 'card' && (
-                      <>
+                {formData.paymentMethod === 'card' && (
+                  <>
+                    <input
+                      type="text"
+                      name="cardNumber"
+                      placeholder="Card Number (16 digits) *"
+                      value={formData.cardNumber}
+                      onChange={(e) =>
+                        handleChange({
+                          ...e,
+                          target: {
+                            ...e.target,
+                            value: e.target.value.replace(/\D/g, '').substring(0, 16),
+                          },
+                        })
+                      }
+                      className={`input w-full mb-4 ${formErrors.cardNumber ? 'border-red-500' : ''}`}
+                    />
+                    {formErrors.cardNumber && (
+                      <p className="text-red-600 text-xs mt-1 mb-4">{formErrors.cardNumber}</p>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
                         <input
                           type="text"
                           name="expiry"
@@ -360,30 +539,44 @@ const Checkout = () => {
                           onChange={(e) => {
                             let val = e.target.value.replace(/\D/g, '').substring(0, 4)
                             if (val.length >= 2) val = val.substring(0, 2) + '/' + val.substring(2)
-                            handleChange({...e, target: {...e.target, value: val}})
+                            handleChange({
+                              ...e,
+                              target: {
+                                ...e.target,
+                                value: val,
+                              },
+                            })
                           }}
                           className={`input ${formErrors.expiry ? 'border-red-500' : ''}`}
                         />
-                        {formErrors.expiry && <p className="text-red-600 text-xs mt-1">{formErrors.expiry}</p>}
-                      </>
-                    )}
-                  </div>
-                  <div>
-                    {formData.paymentMethod === 'card' && (
-                      <>
+                        {formErrors.expiry && (
+                          <p className="text-red-600 text-xs mt-1">{formErrors.expiry}</p>
+                        )}
+                      </div>
+                      <div>
                         <input
                           type="text"
                           name="cvv"
                           placeholder="CVV *"
                           value={formData.cvv}
-                          onChange={(e) => handleChange({...e, target: {...e.target, value: e.target.value.replace(/\D/g, '').substring(0, 4)}})}
+                          onChange={(e) =>
+                            handleChange({
+                              ...e,
+                              target: {
+                                ...e.target,
+                                value: e.target.value.replace(/\D/g, '').substring(0, 4),
+                              },
+                            })
+                          }
                           className={`input ${formErrors.cvv ? 'border-red-500' : ''}`}
                         />
-                        {formErrors.cvv && <p className="text-red-600 text-xs mt-1">{formErrors.cvv}</p>}
-                      </>
-                    )}
-                  </div>
-                </div>
+                        {formErrors.cvv && (
+                          <p className="text-red-600 text-xs mt-1">{formErrors.cvv}</p>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Submit Button */}
@@ -553,22 +746,52 @@ const Checkout = () => {
                 </div>
               </div>
 
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="btn btn-primary w-full text-lg font-semibold py-3 flex items-center justify-center gap-2 mb-3"
-              >
-                <FaCheckCircle />
-                {loading ? 'Processing...' : 'Place Order'}
-              </button>
+              {formData.paymentMethod === 'paypal' && paypalEnabled ? (
+                <div className="space-y-3">
+                  {paypalError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded">
+                      {paypalError}
+                    </div>
+                  )}
+                  <PayPalButtons
+                    style={{ layout: 'vertical' }}
+                    disabled={paypalLoading}
+                    forceReRender={[finalTotal, paypalLoading]}
+                    createOrder={createServerPayPalOrder}
+                    onApprove={handlePayPalApprove}
+                    onError={(err) => {
+                      console.error('PayPal button error', err)
+                      setPaypalError('Unable to initialize PayPal. Please try again later.')
+                    }}
+                  />
+                  <button
+                    onClick={() => setShowReview(false)}
+                    className="btn btn-outline w-full font-semibold py-2"
+                    disabled={paypalLoading}
+                  >
+                    Back to Form
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    className="btn btn-primary w-full text-lg font-semibold py-3 flex items-center justify-center gap-2 mb-3"
+                  >
+                    <FaCheckCircle />
+                    {loading ? 'Processing...' : 'Place Order'}
+                  </button>
 
-              <button
-                onClick={() => setShowReview(false)}
-                className="btn btn-outline w-full font-semibold py-2"
-                disabled={loading}
-              >
-                Back to Form
-              </button>
+                  <button
+                    onClick={() => setShowReview(false)}
+                    className="btn btn-outline w-full font-semibold py-2"
+                    disabled={loading}
+                  >
+                    Back to Form
+                  </button>
+                </>
+              )}
 
               <p className="text-xs text-gray-500 text-center mt-4">
                 ✓ Secure • ✓ Encrypted • ✓ Verified
@@ -580,6 +803,16 @@ const Checkout = () => {
       {/* Ensure order includes payment method and transfer reference in review/submit */}
     </div>
   )
+
+  if (paypalOptions) {
+    return (
+      <PayPalScriptProvider options={paypalOptions}>
+        {checkoutContent}
+      </PayPalScriptProvider>
+    )
+  }
+
+  return checkoutContent
 }
 
 export default Checkout
