@@ -21,8 +21,8 @@ export default function CatalogPage() {
           apiClient.getCategories(),
           apiClient.getProducts(),
         ]);
-        setCategories(categoriesData || []);
-        setProducts(productsData || []);
+        setCategories((categoriesData || []) as Category[]);
+        setProducts((productsData || []) as Product[]);
       } catch (err) {
         console.error("Failed to fetch catalog data:", err);
         setError("Unable to load catalog. Please refresh the page.");

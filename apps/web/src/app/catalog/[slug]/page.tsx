@@ -27,7 +27,7 @@ export default function ProductDetailPage() {
     const fetchProduct = async () => {
       try {
         setLoading(true);
-        const data = await apiClient.getProductBySlug(slug);
+        const data = (await apiClient.getProductBySlug(slug)) as Product;
         setProduct(data);
         if (data?.variants && data.variants.length > 0) {
           setSelectedVariant(data.variants[0]);

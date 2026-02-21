@@ -448,6 +448,16 @@ const Checkout = () => {
                     <p>Review your order below, then click the PayPal button to complete payment.</p>
                   </div>
                 )}
+
+                {paypalEnabled && (
+                  <button
+                    type="button"
+                    onClick={handleReview}
+                    className="btn btn-primary w-full font-semibold py-3 mt-2"
+                  >
+                    Continue to PayPal
+                  </button>
+                )}
               </div>
 
               {/* Submit Button */}
