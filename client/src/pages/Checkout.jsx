@@ -27,11 +27,7 @@ const Checkout = () => {
     city: '',
     state: '',
     zipCode: '',
-    cardNumber: '',
-    expiry: '',
-    cvv: '',
-    paymentMethod: 'card',
-    transferReference: '',
+    paymentMethod: 'paypal',
   })
   const [paypalError, setPaypalError] = useState('')
   const [paypalLoading, setPaypalLoading] = useState(false)
@@ -49,7 +45,7 @@ const Checkout = () => {
 
   useEffect(() => {
     if (!paypalEnabled && formData.paymentMethod === 'paypal') {
-      setFormData((prev) => ({ ...prev, paymentMethod: 'card' }))
+      setFormData((prev) => ({ ...prev, paymentMethod: 'paypal' }))
     }
   }, [paypalEnabled, formData.paymentMethod])
 
@@ -131,12 +127,11 @@ const Checkout = () => {
 
   const getAuthHeaders = async () => {
     const token = await user?.getIdToken?.()
-    if (!token) {
-      throw new Error('You must be logged in to use PayPal checkout.')
-    }
-    return {
-      Authorization: `Bearer ${token}`,
-    }
+    return token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : {}
   }
 
   const validateForm = () => {
@@ -151,15 +146,7 @@ const Checkout = () => {
     if (!formData.city.trim()) errors.city = 'City is required'
     if (!formData.state.trim()) errors.state = 'State is required'
     if (!formData.zipCode.trim()) errors.zipCode = 'ZIP code is required'
-    // Only validate card fields when card payment selected
-    if (formData.paymentMethod === 'card') {
-      if (!formData.cardNumber.trim()) errors.cardNumber = 'Card number is required'
-      if (!/^\d{16}$/.test(formData.cardNumber.replace(/\s/g, ''))) errors.cardNumber = 'Invalid card number'
-      if (!formData.expiry.trim()) errors.expiry = 'Expiry date is required'
-      if (!/^\d{2}\/\d{2}$/.test(formData.expiry)) errors.expiry = 'Use MM/YY format'
-      if (!formData.cvv.trim() || !/^\d{3,4}$/.test(formData.cvv)) errors.cvv = 'Invalid CVV'
-    }
-    
+
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -187,21 +174,13 @@ const Checkout = () => {
   }
 
   const finalizeOrder = async ({ paymentMethod, status, meta } = {}) => {
-    const resolvedPaymentMethod = paymentMethod || formData.paymentMethod || 'card'
-    const resolvedStatus =
-      status ||
-      (resolvedPaymentMethod === 'transfer'
-        ? 'Pending Transfer'
-        : resolvedPaymentMethod === 'paypal'
-        ? 'Paid'
-        : 'Pending')
+    const resolvedPaymentMethod = paymentMethod || 'paypal'
+    const resolvedStatus = status || (resolvedPaymentMethod === 'paypal' ? 'Paid' : 'Pending')
 
     const baseOrder = buildOrderData()
     const order = {
       ...baseOrder,
       paymentMethod: resolvedPaymentMethod,
-      transferReference:
-        resolvedPaymentMethod === 'transfer' ? formData.transferReference || null : null,
       status: resolvedStatus,
       createdAt: serverTimestamp(),
       ...meta,
@@ -217,10 +196,6 @@ const Checkout = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (formData.paymentMethod === 'paypal') {
-      setPaypalError('Please complete your payment using the PayPal button below.')
-      return
-    }
     setLoading(true)
     try {
       const { orderId } = await finalizeOrder()
@@ -460,122 +435,18 @@ const Checkout = () => {
 
                 {/* Payment method selector */}
                 <div className="mb-4 flex flex-wrap gap-4 items-center">
-                  <label className="inline-flex items-center">
-                    <input type="radio" name="paymentMethod" value="card" checked={formData.paymentMethod === 'card'} onChange={handleChange} className="mr-2" />
-                    <span>Card</span>
-                  </label>
-                  <label className="inline-flex items-center">
-                    <input type="radio" name="paymentMethod" value="transfer" checked={formData.paymentMethod === 'transfer'} onChange={handleChange} className="mr-2" />
-                    <span>Bank Transfer (test)</span>
-                  </label>
                   {paypalEnabled ? (
-                    <label className="inline-flex items-center">
-                      <input type="radio" name="paymentMethod" value="paypal" checked={formData.paymentMethod === 'paypal'} onChange={handleChange} className="mr-2" />
-                      <span>PayPal</span>
-                    </label>
+                    <span className="text-sm font-medium text-gray-800">Pay with PayPal</span>
                   ) : (
-                    <span className="text-xs text-gray-500">
-                      PayPal checkout is disabled until a client ID is configured by admin.
-                    </span>
+                    <span className="text-xs text-gray-500">PayPal checkout is disabled until a client ID is configured by admin.</span>
                   )}
                 </div>
 
-                {/* Transfer instructions when selected */}
-                {formData.paymentMethod === 'transfer' && (
-                  <div className="mb-4 p-4 bg-gray-50 rounded text-sm text-gray-700">
-                    <p className="font-semibold">Send test transfer to:</p>
-                    <p>Bank: Example Bank</p>
-                    <p>Account: 123456789</p>
-                    <p>Name: Access Health Test</p>
-                    <p className="mt-2">After sending, optionally enter the transaction reference below.</p>
-                    <input
-                      type="text"
-                      name="transferReference"
-                      placeholder="Transaction reference (optional)"
-                      value={formData.transferReference}
-                      onChange={handleChange}
-                      className="input w-full mt-2"
-                    />
-                  </div>
-                )}
-
-                {/* PayPal helper copy */}
-                {formData.paymentMethod === 'paypal' && paypalEnabled && (
+                {paypalEnabled && (
                   <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-900">
                     <p className="font-semibold">Pay with PayPal</p>
                     <p>Review your order below, then click the PayPal button to complete payment.</p>
                   </div>
-                )}
-
-                {formData.paymentMethod === 'card' && (
-                  <>
-                    <input
-                      type="text"
-                      name="cardNumber"
-                      placeholder="Card Number (16 digits) *"
-                      value={formData.cardNumber}
-                      onChange={(e) =>
-                        handleChange({
-                          ...e,
-                          target: {
-                            ...e.target,
-                            value: e.target.value.replace(/\D/g, '').substring(0, 16),
-                          },
-                        })
-                      }
-                      className={`input w-full mb-4 ${formErrors.cardNumber ? 'border-red-500' : ''}`}
-                    />
-                    {formErrors.cardNumber && (
-                      <p className="text-red-600 text-xs mt-1 mb-4">{formErrors.cardNumber}</p>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <input
-                          type="text"
-                          name="expiry"
-                          placeholder="MM/YY *"
-                          value={formData.expiry}
-                          onChange={(e) => {
-                            let val = e.target.value.replace(/\D/g, '').substring(0, 4)
-                            if (val.length >= 2) val = val.substring(0, 2) + '/' + val.substring(2)
-                            handleChange({
-                              ...e,
-                              target: {
-                                ...e.target,
-                                value: val,
-                              },
-                            })
-                          }}
-                          className={`input ${formErrors.expiry ? 'border-red-500' : ''}`}
-                        />
-                        {formErrors.expiry && (
-                          <p className="text-red-600 text-xs mt-1">{formErrors.expiry}</p>
-                        )}
-                      </div>
-                      <div>
-                        <input
-                          type="text"
-                          name="cvv"
-                          placeholder="CVV *"
-                          value={formData.cvv}
-                          onChange={(e) =>
-                            handleChange({
-                              ...e,
-                              target: {
-                                ...e.target,
-                                value: e.target.value.replace(/\D/g, '').substring(0, 4),
-                              },
-                            })
-                          }
-                          className={`input ${formErrors.cvv ? 'border-red-500' : ''}`}
-                        />
-                        {formErrors.cvv && (
-                          <p className="text-red-600 text-xs mt-1">{formErrors.cvv}</p>
-                        )}
-                      </div>
-                    </div>
-                  </>
                 )}
               </div>
 
@@ -676,23 +547,10 @@ const Checkout = () => {
                 </button>
               </div>
               <div className="bg-gray-50 p-4 rounded">
-                {formData.paymentMethod === 'card' ? (
-                  <div className="flex items-center gap-3">
-                    <FaCreditCard size={24} className="text-blue-600" />
-                    <div>
-                      <p className="font-semibold">Card ending in {formData.cardNumber.slice(-4)}</p>
-                      <p className="text-gray-600 text-sm">Expires: {formData.expiry}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-700">
-                    <p className="font-semibold">Bank Transfer (test)</p>
-                    <p>Bank: Example Bank</p>
-                    <p>Account: 123456789</p>
-                    <p>Name: Access Health Test</p>
-                    {formData.transferReference && <p className="mt-2">Reference: {formData.transferReference}</p>}
-                  </div>
-                )}
+                <div className="text-sm text-gray-700">
+                  <p className="font-semibold">PayPal</p>
+                  <p className="text-gray-600">Complete payment with PayPal below.</p>
+                </div>
               </div>
             </div>
 
@@ -746,7 +604,7 @@ const Checkout = () => {
                 </div>
               </div>
 
-              {formData.paymentMethod === 'paypal' && paypalEnabled ? (
+              {paypalEnabled ? (
                 <div className="space-y-3">
                   {paypalError && (
                     <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded">
@@ -773,25 +631,16 @@ const Checkout = () => {
                   </button>
                 </div>
               ) : (
-                <>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={loading}
-                    className="btn btn-primary w-full text-lg font-semibold py-3 flex items-center justify-center gap-2 mb-3"
-                  >
-                    <FaCheckCircle />
-                    {loading ? 'Processing...' : 'Place Order'}
-                  </button>
-
-                  <button
-                    onClick={() => setShowReview(false)}
-                    className="btn btn-outline w-full font-semibold py-2"
-                    disabled={loading}
-                  >
-                    Back to Form
-                  </button>
-                </>
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded">
+                  PayPal checkout is disabled until a client ID is configured by admin.
+                </div>
               )}
+              <button
+                onClick={() => setShowReview(false)}
+                className="btn btn-outline w-full font-semibold py-3"
+              >
+                Back to Form
+              </button>
 
               <p className="text-xs text-gray-500 text-center mt-4">
                 ✓ Secure • ✓ Encrypted • ✓ Verified

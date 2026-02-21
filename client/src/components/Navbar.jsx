@@ -7,7 +7,16 @@ import { useEffect, useState } from 'react'
 const Navbar = () => {
   const cartContext = useCart()
   const { user, logout, userRole } = useAuth()
-  const getTotalItems = (cartContext && cartContext.getTotalItems) || (() => JSON.parse(localStorage.getItem('cart') || '[]').reduce((s, i) => s + (i.quantity || 0), 0))
+
+  const getTotalItems = () => {
+    if (cartContext && cartContext.getTotalItems) return cartContext.getTotalItems()
+    try {
+      return JSON.parse(localStorage.getItem('cart') || '[]').reduce((s, i) => s + (i.quantity || 0), 0)
+    } catch (e) {
+      return 0
+    }
+  }
+
   const [cartCount, setCartCount] = useState(getTotalItems())
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -17,7 +26,13 @@ const Navbar = () => {
     // also poll in case the app updates without storage event
     const iv = setInterval(() => setCartCount(getTotalItems()), 1000)
     return () => { window.removeEventListener('storage', onStorage); clearInterval(iv) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    // Sync when CartContext updates
+    setCartCount(getTotalItems())
+  }, [cartContext?.cartItems])
 
   return (
     <nav className="bg-blue-600 text-white shadow-lg">
@@ -30,7 +45,6 @@ const Navbar = () => {
                 src="/logo.png"
                 alt="Access Health Logo"
                 className="h-12 sm:h-16 md:h-20 lg:h-28 w-auto hover:scale-105 transition-transform"
-              />
               />
             </span>
           </Link>

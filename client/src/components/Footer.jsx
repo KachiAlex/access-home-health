@@ -90,21 +90,16 @@ const Footer = () => {
               </a>
             </div>
             <p className="text-gray-400 text-sm">
-<<<<<<< HEAD
               2215 West 95th Street
               <br />
               Chicago, IL 60643
               <br />
               📞 773.716.8911
               <br />
-              📧 support@accesshomehealthsupplies.com
-=======
-              2215 West 95th Street, Chicago, IL. 60643
-              <br />
-              Phone: 773.716.8911
-              <br />
-              Email: <button onClick={openContact} className="hover:underline">support@accesshomehealthsupplies.com</button>
->>>>>>> 23a37bde07fc87d725bad29add0cba10ac490d87
+              Email:{' '}
+              <button onClick={openContact} className="hover:underline">
+                support@accesshomehealthsupplies.com
+              </button>
             </p>
           </div>
         </div>

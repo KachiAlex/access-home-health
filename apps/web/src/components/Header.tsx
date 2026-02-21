@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { ShoppingCart, User, Search, Menu, X } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -18,15 +19,45 @@ const navLinks = [
 export function Header() {
   const { itemCount } = useCart();
   const { user, logout, isAuthenticated } = useAuth();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [logoClicks, setLogoClicks] = useState(0);
+  const [showAdminPrompt, setShowAdminPrompt] = useState(false);
+
+  const handleLogoClick = () => {
+    const nextCount = logoClicks + 1;
+    setLogoClicks(nextCount);
+
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+    }
+
+    if (nextCount >= 3) {
+      setLogoClicks(0);
+      setShowAdminPrompt(true);
+      setTimeout(() => setShowAdminPrompt(false), 2000);
+      router.push("/login?admin=1");
+      return;
+    }
+
+    clickTimerRef.current = setTimeout(() => {
+      setLogoClicks(0);
+    }, 700);
+  };
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {showAdminPrompt && (
+          <div className="absolute left-1/2 top-2 -translate-x-1/2 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow">
+            Admin login link opening…
+          </div>
+        )}
         <div className="flex items-center justify-between h-16">
           {/* Logo - Left */}
-          <Link href="/" className="flex-shrink-0">
+          <Link href="/" className="flex-shrink-0" onClick={handleLogoClick}>
             <Image
               src="/access-home-logo.png"
               alt="Access Home Health"
