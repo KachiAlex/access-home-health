@@ -8,8 +8,7 @@ const Navbar = () => {
   const cartContext = useCart()
   const { user, logout, userRole } = useAuth()
 
-  const getTotalItems = () => {
-    if (cartContext && cartContext.getTotalItems) return cartContext.getTotalItems()
+  const computeStorageCount = () => {
     try {
       return JSON.parse(localStorage.getItem('cart') || '[]').reduce((s, i) => s + (i.quantity || 0), 0)
     } catch (e) {
@@ -17,21 +16,22 @@ const Navbar = () => {
     }
   }
 
-  const [cartCount, setCartCount] = useState(getTotalItems())
+  const [storageCartCount, setStorageCartCount] = useState(computeStorageCount())
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  useEffect(() => {
-    const onStorage = () => setCartCount(getTotalItems())
-    window.addEventListener('storage', onStorage)
-    // also poll in case the app updates without storage event
-    const iv = setInterval(() => setCartCount(getTotalItems()), 1000)
-    return () => { window.removeEventListener('storage', onStorage); clearInterval(iv) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // If CartContext is present (normal case), derive count directly from context items.
+  // If not, fall back to localStorage with storage event + poll.
+  const cartCount = cartContext?.cartItems
+    ? cartContext.cartItems.reduce((sum, item) => sum + (item.quantity || 0), 0)
+    : storageCartCount
 
   useEffect(() => {
-    // Sync when CartContext updates
-    setCartCount(getTotalItems())
+    if (cartContext?.cartItems) return
+    const onStorage = () => setStorageCartCount(computeStorageCount())
+    window.addEventListener('storage', onStorage)
+    const iv = setInterval(() => setStorageCartCount(computeStorageCount()), 1000)
+    return () => { window.removeEventListener('storage', onStorage); clearInterval(iv) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartContext?.cartItems])
 
   return (
