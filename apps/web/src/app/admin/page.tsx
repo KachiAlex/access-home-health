@@ -1,8 +1,33 @@
+  const handleSavePaystack = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPaystackSaving(true);
+    setPaystackMessage("");
+    try {
+      const ref = doc(firestore, "app_settings", "config");
+      await setDoc(
+        ref,
+        {
+          paystackApiKey: paystackPublicKey,
+          paystackEnabled,
+        },
+        { merge: true }
+      );
+      setPaystackMessage("Saved");
+    } catch (err) {
+      console.error("Failed to save Paystack key", err);
+      setPaystackMessage("Failed to save. Check console.");
+    } finally {
+      setPaystackSaving(false);
+    }
+  };
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, LogIn, Package, Users, Settings, BarChart3, FileText, LogOut, Plus, Edit, Trash2 } from "lucide-react";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { initializeApp, getApps, getApp } from "firebase/app";
 
 interface Product {
   id: number;
@@ -14,6 +39,19 @@ interface Product {
   image: string;
   description: string;
 }
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCg_os6nNaG-B_24raKr_vqdqwpoULgFP8",
+  authDomain: "accesshomehealth.firebaseapp.com",
+  projectId: "accesshomehealth",
+  storageBucket: "accesshomehealth.firebasestorage.app",
+  messagingSenderId: "312957331450",
+  appId: "1:312957331450:web:b01d02d3597d87b07ee643",
+  measurementId: "G-576XCJ82NV",
+};
+
+const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const firestore = getFirestore(firebaseApp);
 
 // Real products based on WordPress images - expanded inventory
 const mockProducts: Product[] = [
@@ -544,6 +582,14 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [products, setProducts] = useState<Product[]>(mockProducts);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [paypalClientId, setPaypalClientId] = useState("");
+  const [paypalEnabled, setPaypalEnabled] = useState(true);
+  const [paypalSaving, setPaypalSaving] = useState(false);
+  const [paypalMessage, setPaypalMessage] = useState("");
+  const [paystackPublicKey, setPaystackPublicKey] = useState("");
+  const [paystackEnabled, setPaystackEnabled] = useState(true);
+  const [paystackSaving, setPaystackSaving] = useState(false);
+  const [paystackMessage, setPaystackMessage] = useState("");
   const router = useRouter();
 
   // Admin credentials (in production, these should be in environment variables)
@@ -565,6 +611,41 @@ export default function AdminPage() {
     setIsLoggedIn(false);
     setEmail("");
     setPassword("");
+  };
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const ref = doc(firestore, "app_settings", "config");
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data?.paypalClientId) setPaypalClientId(data.paypalClientId);
+          if (typeof data?.paypalEnabled === "boolean") setPaypalEnabled(data.paypalEnabled);
+          if (data?.paystackApiKey) setPaystackPublicKey(data.paystackApiKey);
+          if (typeof data?.paystackEnabled === "boolean") setPaystackEnabled(data.paystackEnabled);
+        }
+      } catch (e) {
+        console.error("Failed to load settings", e);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const handleSavePaypal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPaypalSaving(true);
+    setPaypalMessage("");
+    try {
+      const ref = doc(firestore, "app_settings", "config");
+      await setDoc(ref, { paypalClientId, paypalEnabled }, { merge: true });
+      setPaypalMessage("Saved");
+    } catch (err) {
+      console.error("Failed to save PayPal client ID", err);
+      setPaypalMessage("Failed to save. Check console.");
+    } finally {
+      setPaypalSaving(false);
+    }
   };
 
   const handleDeleteProduct = (id: number) => {
@@ -970,9 +1051,89 @@ export default function AdminPage() {
           {activeTab === "settings" && (
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Settings</h2>
-              <div className="bg-white p-8 rounded-lg shadow text-center">
-                <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Settings functionality coming soon</p>
+              <div className="bg-white p-8 rounded-lg shadow space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-blue-50 rounded-full">
+                    <Settings className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">PayPal Configuration</h3>
+                    <p className="text-sm text-gray-600">Manage the PayPal client ID and visibility for checkout.</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSavePaypal} className="space-y-4">
+                  <label className="block text-sm font-medium text-gray-700">PayPal Client ID</label>
+                  <input
+                    type="text"
+                    value={paypalClientId}
+                    onChange={(e) => setPaypalClientId(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter PayPal Client ID"
+                    required
+                  />
+                  <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={paypalEnabled}
+                      onChange={(e) => setPaypalEnabled(e.target.checked)}
+                      className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                    />
+                    Show PayPal at checkout
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={paypalSaving}
+                    className="px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {paypalSaving ? "Saving..." : "Save"}
+                  </button>
+                  {paypalMessage && (
+                    <p className="text-sm text-gray-700">{paypalMessage}</p>
+                  )}
+                </form>
+
+                <div className="pt-8 border-t border-gray-100 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-green-50 rounded-full">
+                      <Settings className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">Paystack Configuration</h3>
+                      <p className="text-sm text-gray-600">Manage the Paystack public key and visibility.</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleSavePaystack} className="space-y-4">
+                    <label className="block text-sm font-medium text-gray-700">Paystack Public Key</label>
+                    <input
+                      type="text"
+                      value={paystackPublicKey}
+                      onChange={(e) => setPaystackPublicKey(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="pk_live_xxx"
+                    />
+                    <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={paystackEnabled}
+                        onChange={(e) => setPaystackEnabled(e.target.checked)}
+                        className="h-4 w-4 text-green-600 border-gray-300 rounded"
+                      />
+                      Show Paystack at checkout
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={paystackSaving}
+                      className="px-4 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-60"
+                    >
+                      {paystackSaving ? "Saving..." : "Save"}
+                    </button>
+                    {paystackMessage && (
+                      <p className="text-sm text-gray-700">{paystackMessage}</p>
+                    )}
+                  </form>
+                </div>
               </div>
             </div>
           )}
