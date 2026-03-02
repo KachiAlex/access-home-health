@@ -39,7 +39,14 @@ const AdminDashboard = () => {
   const [orders, setOrders] = useState([])
   const [facebookAppId, setFacebookAppId] = useState(settings?.facebookAppId || '')
   const [sendGridKey, setSendGridKey] = useState(settings?.sendGridKey || '')
-  const [settingsSaved, setSettingsSaved] = useState(false)
+  const [paypalClientId, setPaypalClientId] = useState(settings?.paypalClientId || '')
+  const [paypalEnabled, setPaypalEnabled] = useState(settings?.paypalEnabled ?? true)
+  const [paystackApiKey, setPaystackApiKey] = useState(settings?.paystackApiKey || '')
+  const [paystackEnabled, setPaystackEnabled] = useState(settings?.paystackEnabled ?? true)
+  const [paypalSaved, setPaypalSaved] = useState(false)
+  const [facebookSaved, setFacebookSaved] = useState(false)
+  const [sendgridSaved, setSendgridSaved] = useState(false)
+  const [paystackSaved, setPaystackSaved] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [newProduct, setNewProduct] = useState({
     name: '',
@@ -66,6 +73,18 @@ const AdminDashboard = () => {
     }
     if (settings?.sendGridKey) {
       setSendGridKey(settings.sendGridKey)
+    }
+    if (settings?.paypalClientId) {
+      setPaypalClientId(settings.paypalClientId)
+    }
+    if (settings?.paypalEnabled !== undefined) {
+      setPaypalEnabled(settings.paypalEnabled)
+    }
+    if (settings?.paystackApiKey) {
+      setPaystackApiKey(settings.paystackApiKey)
+    }
+    if (settings?.paystackEnabled !== undefined) {
+      setPaystackEnabled(settings.paystackEnabled)
     }
   }, [settings])
 
@@ -198,15 +217,47 @@ const AdminDashboard = () => {
     }
   }
 
-  const handleSaveSettings = async (e) => {
-    e.preventDefault()
-    const result = await updateSettings({ facebookAppId, sendGridKey })
+  const handleSavePaypal = async () => {
+    const result = await updateSettings({ paypalClientId, paypalEnabled })
     if (result.success) {
-      setSettingsSaved(true)
-      setTimeout(() => setSettingsSaved(false), 3000)
-      alert('Settings saved successfully!')
+      setPaypalSaved(true)
+      setTimeout(() => setPaypalSaved(false), 3000)
+      alert('PayPal Client ID saved successfully!')
     } else {
-      alert(`Error saving settings: ${result.error}`)
+      alert(`Error saving PayPal Client ID: ${result.error}`)
+    }
+  }
+
+  const handleSaveFacebook = async () => {
+    const result = await updateSettings({ facebookAppId })
+    if (result.success) {
+      setFacebookSaved(true)
+      setTimeout(() => setFacebookSaved(false), 3000)
+      alert('Facebook App ID saved successfully!')
+    } else {
+      alert(`Error saving Facebook App ID: ${result.error}`)
+    }
+  }
+
+  const handleSaveSendgrid = async () => {
+    const result = await updateSettings({ sendGridKey })
+    if (result.success) {
+      setSendgridSaved(true)
+      setTimeout(() => setSendgridSaved(false), 3000)
+      alert('SendGrid API key saved successfully!')
+    } else {
+      alert(`Error saving SendGrid API key: ${result.error}`)
+    }
+  }
+
+  const handleSavePaystack = async () => {
+    const result = await updateSettings({ paystackApiKey, paystackEnabled })
+    if (result.success) {
+      setPaystackSaved(true)
+      setTimeout(() => setPaystackSaved(false), 3000)
+      alert('Paystack API key saved successfully!')
+    } else {
+      alert(`Error saving Paystack API key: ${result.error}`)
     }
   }
 
@@ -456,12 +507,57 @@ const AdminDashboard = () => {
 
             {activeTab === 'settings' && (
               <div>
-                <h2 className="text-2xl font-bold mb-6">App Settings</h2>
-                <form onSubmit={handleSaveSettings} className="max-w-2xl">
-                  {/* Facebook App ID Setting */}
-                  <div className="mb-8 p-6 bg-gray-50 rounded-lg">
-                    <label className="block text-sm font-semibold mb-2">Facebook App ID</label>
-                    <p className="text-xs text-gray-600 mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">App Settings</h3>
+                <p className="text-sm text-gray-500">Configure integrations used across the app</p>
+
+                <div className="space-y-6">
+                  {/* PayPal */}
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">PayPal Client ID</label>
+                    <input
+                      type="text"
+                      value={paypalClientId}
+                      onChange={(e) => setPaypalClientId(e.target.value)}
+                      className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter PayPal Client ID"
+                      required
+                    />
+                    <label className="mt-4 flex items-center space-x-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={paypalEnabled}
+                        onChange={(e) => setPaypalEnabled(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                      />
+                      <span>Show PayPal as a payment option</span>
+                    </label>
+                    <div className="mt-3 flex items-center space-x-3">
+                      <button
+                        type="button"
+                        onClick={handleSavePaypal}
+                        className="btn btn-primary flex items-center space-x-2"
+                      >
+                        <FaSave size={16} />
+                        <span>Save PayPal</span>
+                      </button>
+                      {paypalSaved && (
+                        <p className="text-green-600 text-sm font-semibold">✓ Saved</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Facebook */}
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Facebook App ID</label>
+                    <input
+                      type="text"
+                      value={facebookAppId}
+                      onChange={(e) => setFacebookAppId(e.target.value)}
+                      className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter Facebook App ID"
+                      required
+                    />
+                    <p className="text-xs text-gray-600 mt-2">
                       Enter your Facebook App ID to enable product sharing feature. Get your App ID from{' '}
                       <a
                         href="https://developers.facebook.com"
@@ -472,20 +568,30 @@ const AdminDashboard = () => {
                         Facebook Developers
                       </a>
                     </p>
+                    <div className="mt-3 flex items-center space-x-3">
+                      <button
+                        type="button"
+                        onClick={handleSaveFacebook}
+                        className="btn btn-primary flex items-center space-x-2"
+                      >
+                        <FaSave size={16} />
+                        <span>Save Facebook</span>
+                      </button>
+                      {facebookSaved && (
+                        <p className="text-green-600 text-sm font-semibold">✓ Saved</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* SendGrid */}
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">SendGrid API Key (optional)</label>
                     <input
                       type="text"
-                      placeholder="Enter Facebook App ID"
-                      value={facebookAppId}
-                      onChange={(e) => setFacebookAppId(e.target.value)}
-                      className="input w-full mb-4"
-                    />
-                    <label className="block text-sm font-semibold mb-2">SendGrid API Key (optional)</label>
-                    <input
-                      type="text"
-                      placeholder="Enter SendGrid API Key"
                       value={sendGridKey}
                       onChange={(e) => setSendGridKey(e.target.value)}
-                      className="input w-full mb-4"
+                      className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter SendGrid API Key"
                     />
                     {sendGridKey && (
                       <div className="flex items-center justify-between mt-2">
@@ -494,22 +600,59 @@ const AdminDashboard = () => {
                           onClick={handleRemoveSendGridKey}
                           className="btn btn-outline ml-3"
                         >
-                          Remove Key
+                          Remove
                         </button>
                       </div>
                     )}
-                    <button
-                      type="submit"
-                      className="btn btn-primary flex items-center space-x-2"
-                    >
-                      <FaSave size={16} />
-                      <span>Save Settings</span>
-                    </button>
-                    {settingsSaved && (
-                      <p className="text-green-600 text-sm mt-4 font-semibold">✓ Settings saved successfully!</p>
-                    )}
+                    <div className="mt-3 flex items-center space-x-3">
+                      <button
+                        type="button"
+                        onClick={handleSaveSendgrid}
+                        className="btn btn-primary flex items-center space-x-2"
+                      >
+                        <FaSave size={16} />
+                        <span>Save SendGrid</span>
+                      </button>
+                      {sendgridSaved && (
+                        <p className="text-green-600 text-sm font-semibold">✓ Saved</p>
+                      )}
+                    </div>
                   </div>
-                </form>
+
+                  {/* Paystack */}
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Paystack API Key</label>
+                    <input
+                      type="text"
+                      value={paystackApiKey}
+                      onChange={(e) => setPaystackApiKey(e.target.value)}
+                      className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter Paystack API Key"
+                    />
+                    <label className="mt-4 flex items-center space-x-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={paystackEnabled}
+                        onChange={(e) => setPaystackEnabled(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                      />
+                      <span>Show Paystack as a payment option</span>
+                    </label>
+                    <div className="mt-3 flex items-center space-x-3">
+                      <button
+                        type="button"
+                        onClick={handleSavePaystack}
+                        className="btn btn-primary flex items-center space-x-2"
+                      >
+                        <FaSave size={16} />
+                        <span>Save Paystack</span>
+                      </button>
+                      {paystackSaved && (
+                        <p className="text-green-600 text-sm font-semibold">✓ Saved</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
                 {/* Admin password change */}
                 <div className="mt-8 p-6 bg-gray-50 rounded-lg max-w-2xl">

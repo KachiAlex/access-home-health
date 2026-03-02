@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react'
 import { db } from '../config/firebase'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 
+const defaultSettings = {
+  facebookAppId: '',
+  paypalClientId: '',
+  paypalEnabled: true,
+  paystackApiKey: '',
+  paystackEnabled: true,
+  sendGridKey: '',
+}
+
 export const useSettings = () => {
   const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -12,9 +21,9 @@ export const useSettings = () => {
       try {
         const settingsDoc = await getDoc(doc(db, 'app_settings', 'config'))
         if (settingsDoc.exists()) {
-          setSettings(settingsDoc.data())
+          setSettings({ ...defaultSettings, ...settingsDoc.data() })
         } else {
-          setSettings({ facebookAppId: '' })
+          setSettings(defaultSettings)
         }
       } catch (err) {
         setError(err.message)
@@ -29,7 +38,7 @@ export const useSettings = () => {
   const updateSettings = async (newSettings) => {
     try {
       await setDoc(doc(db, 'app_settings', 'config'), newSettings, { merge: true })
-      setSettings(newSettings)
+      setSettings((prev) => ({ ...(prev || {}), ...newSettings }))
       return { success: true }
     } catch (err) {
       setError(err.message)
