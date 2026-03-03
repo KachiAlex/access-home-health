@@ -286,25 +286,30 @@ const Checkout = () => {
             },
           ],
         },
-        callback: async (response) => {
-          try {
-            const result = await verifyPaystackServerTransaction(response.reference)
-            await postOrderSuccess({
-              orderId: result.orderId,
-              order: result.order,
-              paymentMethod: 'paystack',
+        callback: (response) => {
+          // Handle async operations outside the callback
+          verifyPaystackServerTransaction(response.reference)
+            .then((result) => {
+              return postOrderSuccess({
+                orderId: result.orderId,
+                order: result.order,
+                paymentMethod: 'paystack',
+              }).then(() => result)
             })
-            alert(`✓ Payment received! Order #${result.orderId}`)
-            clearCart()
-            navigate('/')
-          } catch (err) {
-            console.error('Error verifying Paystack order', err)
-            const message = err?.message || 'Payment captured, but verification failed. Please contact support with your reference.'
-            setPaystackError(message)
-            alert(message)
-          } finally {
-            setPaystackLoading(false)
-          }
+            .then((result) => {
+              alert(`✓ Payment received! Order #${result.orderId}`)
+              clearCart()
+              navigate('/')
+            })
+            .catch((err) => {
+              console.error('Error verifying Paystack order', err)
+              const message = err?.message || 'Payment captured, but verification failed. Please contact support with your reference.'
+              setPaystackError(message)
+              alert(message)
+            })
+            .finally(() => {
+              setPaystackLoading(false)
+            })
         },
         onClose: () => {
           setPaystackLoading(false)
