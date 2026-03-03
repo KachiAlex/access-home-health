@@ -16,7 +16,7 @@
     "cors": "^2.8.5",
     "axios": "^1.6.0",
     "express-validator": "^7.0.0",
-    "jsonwebtoken": "^9.1.2",
+    "jsonwebtoken": "^9.0.2",
     "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
