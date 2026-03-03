@@ -256,6 +256,7 @@ const Checkout = () => {
     }
     if (typeof window === 'undefined' || !window.PaystackPop) {
       setPaystackError('Paystack could not load. Please refresh and try again.')
+      setPaystackLoading(false)
       return
     }
 
@@ -264,52 +265,58 @@ const Checkout = () => {
 
     const amountKobo = Math.max(1, Math.round(Number(finalTotal.toFixed(2)) * 100))
 
-    const handler = window.PaystackPop.setup({
-      key: paystackPublicKey,
-      email: formData.email || 'customer@example.com',
-      amount: amountKobo,
-      currency: 'NGN',
-      ref: `ACC-${Date.now()}`,
-      metadata: {
-        custom_fields: [
-          {
-            display_name: 'Customer Name',
-            variable_name: 'customer_name',
-            value: `${formData.firstName} ${formData.lastName}`.trim(),
-          },
-          {
-            display_name: 'Phone',
-            variable_name: 'phone',
-            value: formData.phone,
-          },
-        ],
-      },
-      callback: async (response) => {
-        try {
-          const result = await verifyPaystackServerTransaction(response.reference)
-          await postOrderSuccess({
-            orderId: result.orderId,
-            order: result.order,
-            paymentMethod: 'paystack',
-          })
-          alert(`✓ Payment received! Order #${result.orderId}`)
-          clearCart()
-          navigate('/')
-        } catch (err) {
-          console.error('Error verifying Paystack order', err)
-          const message = err?.message || 'Payment captured, but verification failed. Please contact support with your reference.'
-          setPaystackError(message)
-          alert(message)
-        } finally {
+    try {
+      const handler = window.PaystackPop.setup({
+        key: paystackPublicKey,
+        email: formData.email || 'customer@example.com',
+        amount: amountKobo,
+        currency: 'NGN',
+        ref: `ACC-${Date.now()}`,
+        metadata: {
+          custom_fields: [
+            {
+              display_name: 'Customer Name',
+              variable_name: 'customer_name',
+              value: `${formData.firstName} ${formData.lastName}`.trim(),
+            },
+            {
+              display_name: 'Phone',
+              variable_name: 'phone',
+              value: formData.phone,
+            },
+          ],
+        },
+        callback: async (response) => {
+          try {
+            const result = await verifyPaystackServerTransaction(response.reference)
+            await postOrderSuccess({
+              orderId: result.orderId,
+              order: result.order,
+              paymentMethod: 'paystack',
+            })
+            alert(`✓ Payment received! Order #${result.orderId}`)
+            clearCart()
+            navigate('/')
+          } catch (err) {
+            console.error('Error verifying Paystack order', err)
+            const message = err?.message || 'Payment captured, but verification failed. Please contact support with your reference.'
+            setPaystackError(message)
+            alert(message)
+          } finally {
+            setPaystackLoading(false)
+          }
+        },
+        onClose: () => {
           setPaystackLoading(false)
-        }
-      },
-      onClose: () => {
-        setPaystackLoading(false)
-      },
-    })
+        },
+      })
 
-    handler.openIframe()
+      handler.openIframe()
+    } catch (err) {
+      console.error('Paystack initialization error:', err)
+      setPaystackError('Failed to initialize Paystack. Please try again.')
+      setPaystackLoading(false)
+    }
   }
 
   const checkoutContent = (
@@ -665,14 +672,6 @@ const Checkout = () => {
                   Paystack checkout is disabled until an API key is configured by admin.
                 </div>
               )}
-
-              <button
-                onClick={() => setShowReview(false)}
-                className="btn btn-outline w-full font-semibold py-3 mt-3"
-                disabled={paystackLoading}
-              >
-                Back to Form
-              </button>
 
               <p className="text-xs text-gray-500 text-center mt-4">
                 ✓ Secure • ✓ Encrypted • ✓ Verified
