@@ -16,7 +16,6 @@ const handleValidation = (req, res, next) => {
 
 router.post(
   '/verify-transaction',
-  verifyToken,
   [
     body('reference').notEmpty().withMessage('reference is required'),
     body('orderData').isObject().withMessage('orderData is required'),
@@ -39,7 +38,7 @@ router.post(
       const firestoreOrder = {
         items: orderData.items || [],
         total: resolvedTotal,
-        userId: req.user?.uid || orderData.userId || null,
+        userId: orderData.userId || null,
         email: orderData.email || transaction.customer?.email || null,
         customerName:
           orderData.customerName || transaction.customer?.name || `${transaction.customer?.first_name || ''} ${transaction.customer?.last_name || ''}`.trim(),
