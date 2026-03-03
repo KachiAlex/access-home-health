@@ -83,13 +83,6 @@ const Login = () => {
             </button>
           </form>
 
-          {/* Admin Login Info */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg text-sm">
-            <p className="font-semibold mb-2">Demo Admin Account:</p>
-            <p>Email: <code className="bg-white px-2 py-1 rounded">admin@accesshomehealthsupplies.com</code></p>
-            <p>Password: <code className="bg-white px-2 py-1 rounded">admin123</code></p>
-          </div>
-
           {/* Register Link */}
           <div className="flex items-center justify-between mt-6">
             <p className="text-sm text-gray-600">
