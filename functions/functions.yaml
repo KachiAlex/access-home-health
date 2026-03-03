@@ -5,3 +5,23 @@ endpoints:
     region: us-central1
     entryPoint: sendContact
     httpsTrigger: {}
+  paypalCreateOrder:
+    platform: gcfv2
+    region: us-central1
+    entryPoint: paypalCreateOrder
+    httpsTrigger: {}
+    secretEnvironmentVariables:
+      - key: PAYPAL_CLIENT_ID
+        secret: PAYPAL_CLIENT_ID
+      - key: PAYPAL_SECRET
+        secret: PAYPAL_SECRET
+  paypalCaptureOrder:
+    platform: gcfv2
+    region: us-central1
+    entryPoint: paypalCaptureOrder
+    httpsTrigger: {}
+    secretEnvironmentVariables:
+      - key: PAYPAL_CLIENT_ID
+        secret: PAYPAL_CLIENT_ID
+      - key: PAYPAL_SECRET
+        secret: PAYPAL_SECRET

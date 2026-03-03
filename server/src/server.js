@@ -6,6 +6,7 @@ import orderRoutes from './routes/orders.js'
 import authRoutes from './routes/auth.js'
 import paypalRoutes from './routes/paypal.js'
 import paystackRoutes from './routes/paystack.js'
+import homecareRoutes from './routes/homecare.js'
 import { errorHandler } from './middleware/errorHandler.js'
 
 dotenv.config()
@@ -24,6 +25,7 @@ app.use('/api/orders', orderRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/paypal', paypalRoutes)
 app.use('/api/paystack', paystackRoutes)
+app.use('/api/homecare', homecareRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {

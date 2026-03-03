@@ -37,16 +37,18 @@ export function Button({
     lg: 'px-6 py-3 text-lg',
   } as const;
 
+  const MotionButton = motion.button;
+
   return (
-    <motion.button
+    <MotionButton
       type={type}
       onClick={onClick}
       disabled={disabled}
       whileTap={!disabled ? { scale: 0.98 } : {}}
       whileHover={!disabled ? { scale: 1.02 } : {}}
-      className={${baseStyles}    .trim()}
+      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${fullWidth ? 'w-full' : ''} ${className}`.trim()}
     >
       {children}
-    </motion.button>
+    </MotionButton>
   );
 }

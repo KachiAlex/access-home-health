@@ -20,6 +20,14 @@ interface AuthContextType {
   logout: () => void;
 }
 
+interface ApiUser {
+  id: string;
+  email: string;
+  token?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -49,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await apiClient.login(email, password);
+      const response = (await apiClient.login(email, password)) as ApiUser;
       setUser({
         id: response.id,
         email: response.email,
@@ -57,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         lastName: response.lastName,
       });
       setToken(response.token);
-      localStorage.setItem("auth_token", response.token);
+      localStorage.setItem("auth_token", response.token ?? "");
       localStorage.setItem("auth_user", JSON.stringify(response));
     } finally {
       setIsLoading(false);
@@ -67,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (email: string, password: string, firstName: string, lastName: string) => {
     try {
       setIsLoading(true);
-      const response = await apiClient.register(email, password, firstName, lastName);
+      const response = (await apiClient.register(email, password, firstName, lastName)) as ApiUser;
       setUser({
         id: response.id,
         email: response.email,
@@ -75,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         lastName: response.lastName,
       });
       setToken(response.token);
-      localStorage.setItem("auth_token", response.token);
+      localStorage.setItem("auth_token", response.token ?? "");
       localStorage.setItem("auth_user", JSON.stringify(response));
     } finally {
       setIsLoading(false);

@@ -37,6 +37,7 @@ const AdminDashboard = () => {
 
   const [activeTab, setActiveTab] = useState('products')
   const [orders, setOrders] = useState([])
+  const [homecareRegistrations, setHomecareRegistrations] = useState([])
   const [facebookAppId, setFacebookAppId] = useState(settings?.facebookAppId || '')
   const [sendGridKey, setSendGridKey] = useState(settings?.sendGridKey || '')
   const [paypalClientId, setPaypalClientId] = useState(settings?.paypalClientId || '')
@@ -121,6 +122,27 @@ const AdminDashboard = () => {
     }
 
     fetchOrders()
+  }, [loading, userRole, activeTab])
+
+  // Fetch home care registrations
+  useEffect(() => {
+    if (loading) return
+    if (userRole !== 'admin') return
+    if (activeTab !== 'homecare') return
+
+    const fetchRegistrations = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/homecare/registrations')
+        const data = await response.json()
+        if (data.success) {
+          setHomecareRegistrations(data.registrations)
+        }
+      } catch (err) {
+        console.error('Error fetching home care registrations:', err)
+      }
+    }
+
+    fetchRegistrations()
   }, [loading, userRole, activeTab])
 
   const handleAddOrUpdateProduct = async (e) => {
@@ -349,6 +371,16 @@ const AdminDashboard = () => {
               Orders
             </button>
             <button
+              onClick={() => setActiveTab('homecare')}
+              className={`flex-1 px-6 py-4 font-semibold transition ${
+                activeTab === 'homecare'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Home Care Registrations
+            </button>
+            <button
               onClick={() => setActiveTab('settings')}
               className={`flex-1 px-6 py-4 font-semibold transition flex items-center justify-center space-x-2 ${
                 activeTab === 'settings'
@@ -502,6 +534,82 @@ const AdminDashboard = () => {
                   </div>
                 )}
                 <OrderDetailsModal order={selectedOrder} open={orderModalOpen} onClose={() => { setOrderModalOpen(false); setSelectedOrder(null) }} />
+              </div>
+            )}
+
+            {activeTab === 'homecare' && (
+              <div>
+                <h2 className="text-2xl font-bold mb-6">Home Care Registrations</h2>
+                {homecareRegistrations.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500 text-lg">No registrations yet</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-6 py-3 text-left">Name</th>
+                          <th className="px-6 py-3 text-left">Email</th>
+                          <th className="px-6 py-3 text-left">Phone</th>
+                          <th className="px-6 py-3 text-left">Care Type</th>
+                          <th className="px-6 py-3 text-left">Status</th>
+                          <th className="px-6 py-3 text-left">Date</th>
+                          <th className="px-6 py-3 text-left">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {homecareRegistrations.map((registration) => (
+                          <tr key={registration.id} className="border-b hover:bg-gray-50">
+                            <td className="px-6 py-3 font-semibold">
+                              {registration.firstName} {registration.lastName}
+                            </td>
+                            <td className="px-6 py-3">{registration.email}</td>
+                            <td className="px-6 py-3">{registration.phone}</td>
+                            <td className="px-6 py-3">
+                              <span className="badge badge-primary">
+                                {registration.careType}
+                              </span>
+                            </td>
+                            <td className="px-6 py-3">
+                              <span
+                                className={`badge ${
+                                  registration.status === 'contacted'
+                                    ? 'badge-success'
+                                    : 'badge-primary'
+                                }`}
+                              >
+                                {registration.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-3">
+                              {registration.createdAt
+                                ? new Date(registration.createdAt).toLocaleDateString()
+                                : 'N/A'}
+                            </td>
+                            <td className="px-6 py-3">
+                              <button
+                                onClick={() => {
+                                  alert(
+                                    `Name: ${registration.firstName} ${registration.lastName}\n` +
+                                    `Email: ${registration.email}\n` +
+                                    `Phone: ${registration.phone}\n` +
+                                    `Address: ${registration.address}\n` +
+                                    `Care Type: ${registration.careType}\n` +
+                                    `Message: ${registration.message || 'N/A'}`
+                                  )
+                                }}
+                                className="text-blue-600 hover:text-blue-800 font-semibold"
+                              >
+                                View Details
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 
