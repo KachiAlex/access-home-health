@@ -123,7 +123,8 @@ const AdminDashboard = () => {
 
     const fetchRegistrations = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/homecare/registrations')
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+        const response = await fetch(`${apiUrl}/homecare/registrations`)
         const data = await response.json()
         if (data.success) {
           setHomecareRegistrations(data.registrations)

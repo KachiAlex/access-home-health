@@ -25,7 +25,8 @@ const HomeCareModal = ({ isOpen, onClose }) => {
     setFormStatus({ type: '', message: '' })
 
     try {
-      const response = await fetch('http://localhost:5000/api/homecare/register', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+      const response = await fetch(`${apiUrl}/homecare/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
