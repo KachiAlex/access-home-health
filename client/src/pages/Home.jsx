@@ -2,24 +2,15 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import HeroBanner from '../components/HeroBanner'
 import ProductCard from '../components/ProductCard'
-import { FaBox, FaShippingFast, FaHeadset, FaCheckCircle } from 'react-icons/fa'
+import HomeCareModal from '../components/HomeCareModal'
+import { FaBox, FaShippingFast, FaHeadset, FaCheckCircle, FaHeart, FaUserMd, FaHome } from 'react-icons/fa'
 import { useProducts } from '../hooks/useProducts'
 
 const Home = () => {
   const { products, loading } = useProducts()
   const [featuredProducts, setFeaturedProducts] = useState([])
   const [itemsPerRow, setItemsPerRow] = useState(4)
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: '',
-    careType: '',
-    message: ''
-  })
-  const [formStatus, setFormStatus] = useState({ type: '', message: '' })
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
     // Display up to 20 products as featured (max 5 rows)
@@ -41,53 +32,6 @@ const Home = () => {
     return () => window.removeEventListener('resize', update)
   }, [])
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
-
-  const handleFormSubmit = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setFormStatus({ type: '', message: '' })
-
-    try {
-      const response = await fetch('http://localhost:5000/api/homecare/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setFormStatus({ type: 'success', message: data.message })
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          phone: '',
-          address: '',
-          careType: '',
-          message: ''
-        })
-      } else {
-        setFormStatus({ 
-          type: 'error', 
-          message: data.message || 'Failed to submit registration. Please try again.' 
-        })
-      }
-    } catch (error) {
-      setFormStatus({ 
-        type: 'error', 
-        message: 'Network error. Please check your connection and try again.' 
-      })
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   const features = [
     {
@@ -119,162 +63,83 @@ const Home = () => {
         <HeroBanner />
       </section>
 
-      {/* Home Health Care Registration Section */}
-      <section className="bg-white py-16 border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Register Your Interest in Home Health Care
+      {/* Home Health Care Section with Sales Copy */}
+      <section className="bg-gradient-to-br from-blue-50 via-white to-blue-50 py-20 border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-6">
+              Experience Compassionate Care at Home
             </h2>
-            <p className="text-lg text-gray-600">
-              Get personalized care in the comfort of your home. Fill out the form below and our team will contact you.
+            <p className="text-xl text-gray-700 max-w-3xl mx-auto leading-relaxed">
+              Your loved ones deserve the best care in the comfort of their own home. 
+              Our professional home health care services provide personalized, compassionate support 
+              tailored to your unique needs.
             </p>
           </div>
-          
-          <form onSubmit={handleFormSubmit} className="bg-gray-50 rounded-2xl p-8 shadow-lg">
-            {formStatus.message && (
-              <div className={`mb-6 p-4 rounded-lg ${
-                formStatus.type === 'success' 
-                  ? 'bg-green-100 text-green-800 border border-green-300' 
-                  : 'bg-red-100 text-red-800 border border-red-300'
-              }`}>
-                {formStatus.message}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+              <div className="flex justify-center mb-4">
+                <div className="bg-blue-100 p-4 rounded-full">
+                  <FaUserMd className="text-blue-600 text-3xl" />
+                </div>
               </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-semibold text-gray-700 mb-2">
-                  First Name *
-                </label>
-                <input
-                  type="text"
-                  id="firstName"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter your first name"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Last Name *
-                </label>
-                <input
-                  type="text"
-                  id="lastName"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter your last name"
-                />
-              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">Expert Professionals</h3>
+              <p className="text-gray-600 text-center">
+                Licensed and certified caregivers with years of experience in providing quality home health care.
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Email Address *
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="your.email@example.com"
-                />
+            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+              <div className="flex justify-center mb-4">
+                <div className="bg-blue-100 p-4 rounded-full">
+                  <FaHeart className="text-blue-600 text-3xl" />
+                </div>
               </div>
-              
-              <div>
-                <label htmlFor="phone" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="(123) 456-7890"
-                />
+              <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">Personalized Care Plans</h3>
+              <p className="text-gray-600 text-center">
+                Customized care plans designed around your specific health needs and lifestyle preferences.
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+              <div className="flex justify-center mb-4">
+                <div className="bg-blue-100 p-4 rounded-full">
+                  <FaHome className="text-blue-600 text-3xl" />
+                </div>
               </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">Comfort of Home</h3>
+              <p className="text-gray-600 text-center">
+                Receive professional medical care while staying in the familiar, comfortable environment of your home.
+              </p>
             </div>
+          </div>
 
-            <div className="mb-6">
-              <label htmlFor="address" className="block text-sm font-semibold text-gray-700 mb-2">
-                Address *
-              </label>
-              <input
-                type="text"
-                id="address"
-                name="address"
-                value={formData.address}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                placeholder="Enter your full address"
-              />
-            </div>
-
-            <div className="mb-6">
-              <label htmlFor="careType" className="block text-sm font-semibold text-gray-700 mb-2">
-                Type of Care Needed *
-              </label>
-              <select
-                id="careType"
-                name="careType"
-                value={formData.careType}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
-              >
-                <option value="">Select care type</option>
-                <option value="skilled-nursing">Skilled Nursing</option>
-                <option value="physical-therapy">Physical Therapy</option>
-                <option value="occupational-therapy">Occupational Therapy</option>
-                <option value="speech-therapy">Speech Therapy</option>
-                <option value="personal-care">Personal Care</option>
-                <option value="companionship">Companionship</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            <div className="mb-6">
-              <label htmlFor="message" className="block text-sm font-semibold text-gray-700 mb-2">
-                Additional Information
-              </label>
-              <textarea
-                id="message"
-                name="message"
-                value={formData.message}
-                onChange={handleInputChange}
-                rows="4"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-                placeholder="Tell us more about your care needs..."
-              ></textarea>
-            </div>
-
-            <div className="flex justify-center">
+          <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12">
+            <div className="text-center">
+              <h3 className="text-3xl font-bold text-gray-900 mb-4">
+                Ready to Get Started?
+              </h3>
+              <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+                Take the first step towards better care. Register your interest today and our dedicated team 
+                will reach out to discuss how we can support you and your loved ones.
+              </p>
               <button
-                type="submit"
-                disabled={isSubmitting}
-                className="btn bg-blue-600 text-white hover:bg-blue-700 px-10 py-3 text-lg font-semibold rounded-lg shadow-md hover:shadow-lg transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
+                onClick={() => setIsModalOpen(true)}
+                className="bg-blue-600 text-white px-10 py-4 text-lg font-semibold rounded-lg shadow-lg hover:bg-blue-700 hover:shadow-xl transform hover:scale-105 transition-all duration-200"
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Registration'}
+                Request Home Care Services
               </button>
+              <p className="text-sm text-gray-500 mt-4">
+                No commitment required • Free consultation • Quick response
+              </p>
             </div>
-          </form>
+          </div>
         </div>
       </section>
+
+      {/* Home Care Modal */}
+      <HomeCareModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
       {/* Features Section */}
       <section className="bg-gradient-to-b from-white to-gray-50 py-16">
