@@ -7,7 +7,6 @@ import app, { db } from '../config/firebase'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { Link, useNavigate } from 'react-router-dom'
 import { FaCheckCircle, FaCreditCard, FaLock, FaArrowLeft } from 'react-icons/fa'
-import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
 import { useSettings } from '../hooks/useSettings'
 
 const Checkout = () => {
@@ -30,34 +29,17 @@ const Checkout = () => {
     city: '',
     state: '',
     zipCode: '',
-    paymentMethod: 'paypal',
+    paymentMethod: 'paystack',
   })
-  const [paypalError, setPaypalError] = useState('')
-  const [paypalLoading, setPaypalLoading] = useState(false)
 
-  const paypalClientId = settings?.paypalClientId || ''
-  const paypalEnabled = Boolean(paypalClientId) && settings?.paypalEnabled !== false
   const paystackPublicKey = settings?.paystackApiKey || ''
   const paystackEnabled = Boolean(paystackPublicKey) && settings?.paystackEnabled !== false
-  const paypalOptions = useMemo(() => {
-    if (!paypalClientId) return null
-    return {
-      'client-id': paypalClientId,
-      currency: 'USD',
-      intent: 'CAPTURE',
-    }
-  }, [paypalClientId])
 
   useEffect(() => {
-    const available = []
-    if (paypalEnabled) available.push('paypal')
-    if (paystackEnabled) available.push('paystack')
-
-    if (available.length === 0) return
-    if (!available.includes(formData.paymentMethod)) {
-      setFormData((prev) => ({ ...prev, paymentMethod: available[0] }))
+    if (paystackEnabled && formData.paymentMethod !== 'paystack') {
+      setFormData((prev) => ({ ...prev, paymentMethod: 'paystack' }))
     }
-  }, [paypalEnabled, paystackEnabled, formData.paymentMethod])
+  }, [paystackEnabled, formData.paymentMethod])
 
   useEffect(() => {
     if (!paystackEnabled) return
@@ -203,8 +185,8 @@ const Checkout = () => {
   }
 
   const finalizeOrder = async ({ paymentMethod, status, meta } = {}) => {
-    const resolvedPaymentMethod = paymentMethod || formData.paymentMethod || 'paypal'
-    const resolvedStatus = status || (resolvedPaymentMethod === 'paypal' ? 'Paid' : 'Pending')
+    const resolvedPaymentMethod = paymentMethod || formData.paymentMethod || 'paystack'
+    const resolvedStatus = status || 'Pending'
 
     const baseOrder = buildOrderData()
     const order = {
@@ -239,93 +221,7 @@ const Checkout = () => {
     }
   }
 
-  const paypalApiBase = import.meta.env.VITE_PAYPAL_API_BASE || 'https://us-central1-accesshomehealth.cloudfunctions.net'
   const restApiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '')
-
-  const createServerPayPalOrder = async () => {
-    setPaypalError('')
-    setPaypalLoading(true)
-    try {
-      const response = await fetch(`${paypalApiBase}/paypalCreateOrder`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(await getAuthHeaders()),
-        },
-        body: JSON.stringify({
-          amount: Number(finalTotal.toFixed(2)),
-          currency: 'USD',
-          description: `Order total for ${cartItems.length} item(s)`,
-          items: cartItems.map((item) => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: Number(item.price || 0),
-          })),
-        }),
-      })
-
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok || !data?.id) {
-        throw new Error(data?.error || 'Failed to create PayPal order')
-      }
-      return data.id
-    } catch (err) {
-      console.error('PayPal create order error', err)
-      const message = err?.message || 'Unable to create PayPal order. Please try again.'
-      setPaypalError(message)
-      throw err
-    } finally {
-      setPaypalLoading(false)
-    }
-  }
-
-  const handlePayPalApprove = async (data) => {
-    if (!data?.orderID) {
-      setPaypalError('Missing PayPal order information. Please try again.')
-      return
-    }
-    setPaypalError('')
-    setPaypalLoading(true)
-    try {
-      const response = await fetch(`${paypalApiBase}/paypalCaptureOrder`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(await getAuthHeaders()),
-        },
-        body: JSON.stringify({
-          orderId: data.orderID,
-          orderData: buildOrderData(),
-        }),
-      })
-
-      const result = await response.json().catch(() => ({}))
-      if (!response.ok || !result?.success) {
-        throw new Error(result?.error || 'Failed to capture PayPal order')
-      }
-
-      await postOrderSuccess({
-        orderId: result.orderId,
-        order:
-          result.order || {
-            ...buildOrderData(),
-            paymentMethod: 'paypal',
-            status: 'Paid',
-          },
-        paymentMethod: 'paypal',
-      })
-
-      alert(`✓ Payment received! Order #${result.orderId}`)
-      clearCart()
-      navigate('/')
-    } catch (err) {
-      console.error('PayPal approval error:', err)
-      const message = err?.message || 'PayPal payment failed. Please try again or use another method.'
-      setPaypalError(message)
-    } finally {
-      setPaypalLoading(false)
-    }
-  }
 
   const verifyPaystackServerTransaction = async (reference) => {
     setPaystackError('')
@@ -554,73 +450,34 @@ const Checkout = () => {
                   <span>Your payment information is encrypted and secure</span>
                 </div>
 
-                <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {paypalEnabled && (
-                    <button
-                      type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, paymentMethod: 'paypal' }))}
-                      className={`border rounded-lg p-4 text-left shadow-sm transition ${
-                        formData.paymentMethod === 'paypal'
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-blue-300'
-                      }`}
-                    >
+                <div className="mb-6">
+                  {paystackEnabled && (
+                    <div className="border rounded-lg p-4 text-left shadow-sm border-blue-500 bg-blue-50">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-gray-800">PayPal</span>
-                        {formData.paymentMethod === 'paypal' && (
-                          <span className="text-xs text-blue-600 font-semibold">Selected</span>
-                        )}
+                        <span className="text-sm font-semibold text-gray-800">Paystack</span>
+                        <span className="text-xs text-blue-600 font-semibold">Selected</span>
+                      </div>
+                      <p className="text-xs text-gray-600 mt-2">Secure card payment powered by Paystack.</p>
+                    </div>
+                  )}
                   {!paystackEnabled && (
                     <div className="border rounded-lg p-4 text-left shadow-sm border-gray-200 bg-gray-50">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-semibold text-gray-800">Paystack</span>
-                        <span className="text-xs text-gray-500 font-semibold">Hidden by admin</span>
+                        <span className="text-xs text-gray-500 font-semibold">Disabled by admin</span>
                       </div>
                       <p className="text-xs text-gray-600 mt-2">This payment method is currently unavailable.</p>
                     </div>
-                  )}
-                      </div>
-                      <p className="text-xs text-gray-600 mt-2">Checkout quickly with PayPal.</p>
-                    </button>
-                  )}
-                  {!paypalEnabled && (
-                    <div className="border rounded-lg p-4 text-left shadow-sm border-gray-200 bg-gray-50">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-gray-800">PayPal</span>
-                        <span className="text-xs text-gray-500 font-semibold">Hidden by admin</span>
-                      </div>
-                      <p className="text-xs text-gray-600 mt-2">This payment method is currently unavailable.</p>
-                    </div>
-                  )}
-
-                  {paystackEnabled && (
-                    <button
-                      type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, paymentMethod: 'paystack' }))}
-                      className={`border rounded-lg p-4 text-left shadow-sm transition ${
-                        formData.paymentMethod === 'paystack'
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-blue-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-gray-800">Paystack</span>
-                        {formData.paymentMethod === 'paystack' && (
-                          <span className="text-xs text-blue-600 font-semibold">Selected</span>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-600 mt-2">Secure card payment powered by Paystack.</p>
-                    </button>
                   )}
                 </div>
 
-                {!paypalEnabled && !paystackEnabled && (
+                {!paystackEnabled && (
                   <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-sm text-red-800">
                     No payment methods are enabled. Please contact support.
                   </div>
                 )}
 
-                {(paypalEnabled || paystackEnabled) && (
+                {paystackEnabled && (
                   <button
                     type="submit"
                     className="btn btn-primary w-full text-lg font-semibold py-3 flex items-center justify-center gap-2"
@@ -720,15 +577,10 @@ const Checkout = () => {
               </div>
               <div className="bg-gray-50 p-4 rounded">
                 <div className="text-sm text-gray-700">
-                  <p className="font-semibold capitalize">{formData.paymentMethod}</p>
-                  {formData.paymentMethod === 'paypal' && (
-                    <p className="text-gray-600">Complete payment with PayPal below.</p>
-                  )}
-                  {formData.paymentMethod === 'paystack' && (
-                    <p className="text-gray-600">Click the button below to open the Paystack payment modal.</p>
-                  )}
+                  <p className="font-semibold">Paystack</p>
+                  <p className="text-gray-600">Click the button below to open the Paystack payment modal.</p>
                   <p className="text-xs text-gray-500 mt-2">
-                    PayPal status: {paypalEnabled ? 'ready' : 'disabled (no client ID loaded)'} • Paystack status: {paystackEnabled ? 'ready' : 'disabled'}
+                    Paystack status: {paystackEnabled ? 'ready' : 'disabled'}
                   </p>
                 </div>
               </div>
@@ -784,29 +636,7 @@ const Checkout = () => {
                 </div>
               </div>
 
-              {formData.paymentMethod === 'paypal' && paypalEnabled && (
-                <div className="space-y-3">
-                  {paypalError && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded">
-                      {paypalError}
-                    </div>
-                  )}
-                  <p className="text-sm text-gray-700">Continue to PayPal to complete payment:</p>
-                  <PayPalButtons
-                    style={{ layout: 'vertical' }}
-                    disabled={paypalLoading}
-                    forceReRender={[finalTotal, paypalLoading]}
-                    createOrder={createServerPayPalOrder}
-                    onApprove={handlePayPalApprove}
-                    onError={(err) => {
-                      console.error('PayPal button error', err)
-                      setPaypalError('Unable to initialize PayPal. Please try again later.')
-                    }}
-                  />
-                </div>
-              )}
-
-              {formData.paymentMethod === 'paystack' && paystackEnabled && (
+              {paystackEnabled && (
                 <div className="space-y-3">
                   {paystackError && (
                     <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded">
@@ -830,13 +660,7 @@ const Checkout = () => {
                 </div>
               )}
 
-              {formData.paymentMethod === 'paypal' && !paypalEnabled && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded">
-                  PayPal checkout is disabled until a client ID is configured by admin.
-                </div>
-              )}
-
-              {formData.paymentMethod === 'paystack' && !paystackEnabled && (
+              {!paystackEnabled && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded">
                   Paystack checkout is disabled until an API key is configured by admin.
                 </div>
@@ -845,7 +669,7 @@ const Checkout = () => {
               <button
                 onClick={() => setShowReview(false)}
                 className="btn btn-outline w-full font-semibold py-3 mt-3"
-                disabled={paypalLoading || paystackLoading}
+                disabled={paystackLoading}
               >
                 Back to Form
               </button>
@@ -860,14 +684,6 @@ const Checkout = () => {
       {/* Ensure order includes payment method and transfer reference in review/submit */}
     </div>
   )
-
-  if (paypalOptions) {
-    return (
-      <PayPalScriptProvider options={paypalOptions}>
-        {checkoutContent}
-      </PayPalScriptProvider>
-    )
-  }
 
   return checkoutContent
 }

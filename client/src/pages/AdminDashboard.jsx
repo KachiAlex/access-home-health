@@ -40,11 +40,8 @@ const AdminDashboard = () => {
   const [homecareRegistrations, setHomecareRegistrations] = useState([])
   const [facebookAppId, setFacebookAppId] = useState(settings?.facebookAppId || '')
   const [sendGridKey, setSendGridKey] = useState(settings?.sendGridKey || '')
-  const [paypalClientId, setPaypalClientId] = useState(settings?.paypalClientId || '')
-  const [paypalEnabled, setPaypalEnabled] = useState(settings?.paypalEnabled ?? true)
   const [paystackApiKey, setPaystackApiKey] = useState(settings?.paystackApiKey || '')
   const [paystackEnabled, setPaystackEnabled] = useState(settings?.paystackEnabled ?? true)
-  const [paypalSaved, setPaypalSaved] = useState(false)
   const [facebookSaved, setFacebookSaved] = useState(false)
   const [sendgridSaved, setSendgridSaved] = useState(false)
   const [paystackSaved, setPaystackSaved] = useState(false)
@@ -74,12 +71,6 @@ const AdminDashboard = () => {
     }
     if (settings?.sendGridKey) {
       setSendGridKey(settings.sendGridKey)
-    }
-    if (settings?.paypalClientId) {
-      setPaypalClientId(settings.paypalClientId)
-    }
-    if (settings?.paypalEnabled !== undefined) {
-      setPaypalEnabled(settings.paypalEnabled)
     }
     if (settings?.paystackApiKey) {
       setPaystackApiKey(settings.paystackApiKey)
@@ -236,17 +227,6 @@ const AdminDashboard = () => {
       handleCloseModal()
     } catch (err) {
       alert(`Error saving product: ${err.message}`)
-    }
-  }
-
-  const handleSavePaypal = async () => {
-    const result = await updateSettings({ paypalClientId, paypalEnabled })
-    if (result.success) {
-      setPaypalSaved(true)
-      setTimeout(() => setPaypalSaved(false), 3000)
-      alert('PayPal Client ID saved successfully!')
-    } else {
-      alert(`Error saving PayPal Client ID: ${result.error}`)
     }
   }
 
@@ -619,41 +599,6 @@ const AdminDashboard = () => {
                 <p className="text-sm text-gray-500">Configure integrations used across the app</p>
 
                 <div className="space-y-6">
-                  {/* PayPal */}
-                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">PayPal Client ID</label>
-                    <input
-                      type="text"
-                      value={paypalClientId}
-                      onChange={(e) => setPaypalClientId(e.target.value)}
-                      className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter PayPal Client ID"
-                      required
-                    />
-                    <label className="mt-4 flex items-center space-x-2 text-sm text-gray-700">
-                      <input
-                        type="checkbox"
-                        checked={paypalEnabled}
-                        onChange={(e) => setPaypalEnabled(e.target.checked)}
-                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                      />
-                      <span>Show PayPal as a payment option</span>
-                    </label>
-                    <div className="mt-3 flex items-center space-x-3">
-                      <button
-                        type="button"
-                        onClick={handleSavePaypal}
-                        className="btn btn-primary flex items-center space-x-2"
-                      >
-                        <FaSave size={16} />
-                        <span>Save PayPal</span>
-                      </button>
-                      {paypalSaved && (
-                        <p className="text-green-600 text-sm font-semibold">✓ Saved</p>
-                      )}
-                    </div>
-                  </div>
-
                   {/* Facebook */}
                   <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Facebook App ID</label>
